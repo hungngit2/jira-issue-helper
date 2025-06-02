@@ -37351,11 +37351,7 @@ const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* ()
     if (!transition) {
         throw new Error(`Transition "${transitionName}" not found for issue type "${issueType}"`);
     }
-    const response = yield fetch_1.default.post(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id } } });
-    if (!response || !response.id) {
-        throw new Error(`Failed to transition issue ${input_1.Input.JIRA_ISSUE_KEY} to "${transitionName}"`);
-    }
-    console.log(`Issue ${input_1.Input.JIRA_ISSUE_KEY} transitioned to "${transitionName}" successfully.`);
+    yield fetch_1.default.post(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id } } });
 });
 exports.jiraIssueTransition = jiraIssueTransition;
 

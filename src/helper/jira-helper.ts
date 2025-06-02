@@ -18,10 +18,6 @@ export const jiraIssueTransition = async () => {
     if (!transition) {
         throw new Error(`Transition "${transitionName}" not found for issue type "${issueType}"`)
     }
-    const response = await fetch.post(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id }}})
 
-    if (!response || !response.id) {
-        throw new Error(`Failed to transition issue ${Input.JIRA_ISSUE_KEY} to "${transitionName}"`)
-    }
-    console.log(`Issue ${Input.JIRA_ISSUE_KEY} transitioned to "${transitionName}" successfully.`)
+    await fetch.post(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id }}})
 }
