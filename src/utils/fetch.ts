@@ -41,6 +41,10 @@ export class Fetch {
         console.error(`Request failed! Status: ${res.status}`, errorText)
         throw new Error(`HTTP error! status: ${res.status} ${res.statusText}`)
       }
+      if (res.status === 204) {
+        console.log('No content returned.')
+        return null
+      }
       switch (responseType) {
         case 'json':
           return res.json()
