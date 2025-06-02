@@ -1,0 +1,21 @@
+name: 'Jira Issue Tranision'
+description: 'Jira Issue Tranision'
+inputs:
+  JIRA_BASE_URL:
+    description: 'https://your-domain.atlassian.net'
+    required: true
+  JIRA_USER_EMAIL:
+    description: 'yourname@your-domain'
+    required: true
+  JIRA_API_TOKEN:
+    description: 'Jira API Token'
+    required: true
+  PR_TITLE_PATTERN:
+    description: 'Default: ^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?'
+    required: false
+  JIRA_ISSUE_TYPE_TRANSITION:
+    description: 'Default: "Story:Code Review;Bug:Code Revieww"'
+    required: false
+runs:
+  using: node20
+  main: 'dist/index.js'
