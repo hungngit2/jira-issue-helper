@@ -13,7 +13,8 @@ export const jiraIssueTransition = async () => {
         return
     }
     const issueTtransitions = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`)
-    const transition = issueTtransitions.transitions.find((t: any) => t.name === transitionName)
+    const transition = issueTtransitions.transitions.find((t: any) => t.name.toLowerCase() === transitionName.toLowerCase())
+
     if (!transition) {
         throw new Error(`Transition "${transitionName}" not found for issue type "${issueType}"`)
     }

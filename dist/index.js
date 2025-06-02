@@ -37347,7 +37347,7 @@ const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* ()
         return;
     }
     const issueTtransitions = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`);
-    const transition = issueTtransitions.transitions.find((t) => t.name === transitionName);
+    const transition = issueTtransitions.transitions.find((t) => t.name.toLowerCase() === transitionName.toLowerCase());
     if (!transition) {
         throw new Error(`Transition "${transitionName}" not found for issue type "${issueType}"`);
     }
