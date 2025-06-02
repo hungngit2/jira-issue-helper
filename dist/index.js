@@ -37381,8 +37381,8 @@ const input_1 = __nccwpck_require__(5073);
 const fetch_1 = __nccwpck_require__(7393);
 const jira_helper_1 = __nccwpck_require__(8024);
 const initFetch = () => {
-    fetch_1.Fetch.authorization = Buffer.from(`${input_1.Input.JIRA_USER_EMAIL}:${input_1.Input.JIRA_API_TOKEN}`).toString('base64');
-    fetch_1.Fetch.apiServer = input_1.Input.JIRA_BASE_URL;
+    fetch_1.Fetch.authorization = `Basic ${Buffer.from(`${input_1.Input.JIRA_USER_EMAIL}:${input_1.Input.JIRA_API_TOKEN}`).toString('base64')}`;
+    fetch_1.Fetch.apiServer = `${input_1.Input.JIRA_BASE_URL}/rest/api/3`;
 };
 (() => __awaiter(void 0, void 0, void 0, function* () {
     if (!!input_1.Input.JIRA_BASE_URL && !!input_1.Input.JIRA_USER_EMAIL && !!input_1.Input.JIRA_API_TOKEN && !!input_1.Input.JIRA_ISSUE_KEY) {

@@ -3,8 +3,8 @@ import { Fetch } from './utils/fetch'
 import { jiraIssueTransition } from './helper/jira-helper'
 
 const initFetch = () => {
-  Fetch.authorization = Buffer.from(`${Input.JIRA_USER_EMAIL}:${Input.JIRA_API_TOKEN}`).toString('base64')
-  Fetch.apiServer = Input.JIRA_BASE_URL
+  Fetch.authorization = `Basic ${Buffer.from(`${Input.JIRA_USER_EMAIL}:${Input.JIRA_API_TOKEN}`).toString('base64')}`
+  Fetch.apiServer = `${Input.JIRA_BASE_URL}/rest/api/3`
 }
 
 (async () => {
