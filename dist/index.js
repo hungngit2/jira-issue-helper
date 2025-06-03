@@ -37339,7 +37339,8 @@ const fetch_1 = __nccwpck_require__(7393);
 const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* () {
     const jiraIssue = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}`);
     if (!jiraIssue) {
-        throw new Error(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
+        console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
+        return;
     }
     const issueType = jiraIssue.fields.issuetype.name;
     const transitionName = input_1.Input.JIRA_TYPE_TRANSITION[issueType];
@@ -37347,9 +37348,11 @@ const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* ()
         return;
     }
     const issueTtransitions = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`);
+    console.log(`Transitions for issue ${input_1.Input.JIRA_ISSUE_KEY}:`, issueTtransitions);
     const transition = issueTtransitions.transitions.find((t) => t.name.toLowerCase() === transitionName.toLowerCase());
     if (!transition) {
-        throw new Error(`Transition "${transitionName}" not found for issue type "${issueType}"`);
+        console.log(`Transition "${transitionName}" not found for issue type "${issueType}"`);
+        return;
     }
     yield fetch_1.default.post(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id } } });
 });
@@ -37381,6 +37384,10 @@ const initFetch = () => {
     fetch_1.Fetch.apiServer = `${input_1.Input.JIRA_BASE_URL}/rest/api/3`;
 };
 (() => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('JIRA_BASE_URL:', input_1.Input.JIRA_BASE_URL);
+    console.log('JIRA_USER_EMAIL:', input_1.Input.JIRA_USER_EMAIL);
+    console.log('JIRA_ISSUE_KEY:', input_1.Input.JIRA_ISSUE_KEY);
+    console.log('JIRA_TYPE_TRANSITION:', input_1.Input.JIRA_TYPE_TRANSITION);
     if (!!input_1.Input.JIRA_BASE_URL && !!input_1.Input.JIRA_USER_EMAIL && !!input_1.Input.JIRA_API_TOKEN && !!input_1.Input.JIRA_ISSUE_KEY) {
         initFetch();
         yield (0, jira_helper_1.jiraIssueTransition)();
