@@ -1,6 +1,31 @@
 import { Input } from '../utils/input'
 import fetch from '../utils/fetch'
 
+interface EnvironmentData {
+  env: string;
+  branch: string;
+  buildPaths: string[];
+}
+
+interface TableCell {
+  content?: Array<{
+    content?: Array<{
+      text?: string;
+    }>;
+    text?: string;
+  }>;
+}
+
+interface TableRow {
+  type: string;
+  content?: TableCell[];
+}
+
+interface TableContent {
+  type: string;
+  content?: TableRow[];
+}
+
 export const jiraIssueTransition = async () => {
     const jiraIssue = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}`)
 
@@ -24,4 +49,85 @@ export const jiraIssueTransition = async () => {
     }
 
     await fetch.post(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id }}})
+}
+
+export const jiraIssueInfo = async (): Promise<EnvironmentData[] | undefined> => {
+  const jiraIssue = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}`)
+
+  if (!jiraIssue || jiraIssue?.key !== Input.JIRA_ISSUE_KEY) {
+    console.log(`Jira issue ${Input.JIRA_ISSUE_KEY} not found`)
+    return
+  }
+
+  const ticketStatus = jiraIssue.fields.status.name
+  console.log(`Issue ${Input.JIRA_ISSUE_KEY} status: ${ticketStatus}`)
+
+  if (ticketStatus !== Input.JIRA_ISSUE_APPROVED_STATUS) {
+    console.log(`Issue ${Input.JIRA_ISSUE_KEY} is not in the approved status: ${Input.JIRA_ISSUE_APPROVED_STATUS}`)
+    return
+  }
+
+  const environmentContents = Array.isArray(jiraIssue.fields?.environment?.content)
+    ? (jiraIssue.fields.environment.content as TableContent[])
+    : []
+
+  if (!environmentContents?.length) {
+    console.log(`No environment information found for issue ${Input.JIRA_ISSUE_KEY}`)
+    return
+  }
+
+  const [envColName, branchColName, buildPathsColName] = Input.JIRA_ENV_COLUMNS.map((col: string) => col.trim())
+
+  const findColumnIndex = (headerTexts: string[], columnName: string): number => {
+    return headerTexts.findIndex(text => text === columnName)
+  }
+
+  const releaseEnvironments = environmentContents.map((content: TableContent) => {
+    if (content.type !== 'table') return null
+
+    const rows = content.content?.filter((row: TableRow) => row.type === 'tableRow') || []
+    if (rows.length === 0) return null
+
+    const headerCells = rows[0]?.content || []
+    const headerTexts = headerCells.map((cell: TableCell) =>
+      cell.content?.[0]?.content?.[0]?.text?.trim() || ''
+    )
+
+    if (headerTexts.length < 3) {
+      console.log('Table must have at least 3 columns:', headerTexts)
+      return null
+    }
+
+    const envColIndex = findColumnIndex(headerTexts, envColName)
+    const branchColIndex = findColumnIndex(headerTexts, branchColName)
+    const buildPathsColIndex = findColumnIndex(headerTexts, buildPathsColName)
+
+    if (envColIndex === -1 || branchColIndex === -1 || buildPathsColIndex === -1) {
+      console.log('Missing required columns. Required columns:', [envColName, branchColName, buildPathsColName])
+      console.log('Found columns:', headerTexts)
+      return null
+    }
+
+    const dataRows = rows.slice(1) || []
+
+    const environmentData = dataRows.map((row: TableRow) => {
+      const cells = row.content || []
+      const env = cells[envColIndex]?.content?.[0]?.content?.[0]?.text || ''
+      const branch = cells[branchColIndex]?.content?.[0]?.content?.[0]?.text || ''
+      const buildPaths = (cells[buildPathsColIndex]?.content || [])
+        .map((cell: TableCell) => cell.content?.[0]?.text || cell.content?.[0]?.content?.[0]?.text)
+        .filter(Boolean) as string[]
+
+      return {
+        env,
+        branch,
+        buildPaths
+      }
+    })
+
+    return environmentData
+  }).filter((data): data is EnvironmentData[] => data !== null)
+    .reduce((acc: EnvironmentData[], curr) => [...acc, ...curr], [])
+
+  return releaseEnvironments
 }
