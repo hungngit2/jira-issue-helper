@@ -37444,10 +37444,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __nccwpck_require__(2186);
 const input_1 = __nccwpck_require__(5073);
 const fetch_1 = __nccwpck_require__(7393);
 const jira_helper_1 = __nccwpck_require__(8024);
-const fs = __nccwpck_require__(7561);
 const initFetch = () => {
     fetch_1.Fetch.authorization = `Basic ${Buffer.from(`${input_1.Input.JIRA_USER_EMAIL}:${input_1.Input.JIRA_API_TOKEN}`).toString('base64')}`;
     fetch_1.Fetch.apiServer = `${input_1.Input.JIRA_BASE_URL}/rest/api/3`;
@@ -37468,18 +37468,10 @@ const initFetch = () => {
         yield (0, jira_helper_1.jiraIssueTransition)();
     }
     if (input_1.Input.ACTIONS_MODE === 'IssueInfo') {
-        const releaseEnvironments = yield (0, jira_helper_1.jiraIssueInfo)();
-        console.log(`Release environments for issue`, releaseEnvironments);
-        if (releaseEnvironments) {
-            // Export the release environments
-            process.env[input_1.Input.RELEASE_ENVIRONMENTS_KEY] = JSON.stringify(releaseEnvironments);
-            console.log(`Release environments for issue ${releaseEnvironments.key}:`, process.env[input_1.Input.RELEASE_ENVIRONMENTS_KEY]);
-            // Export to RELEASE_ENVIRONMENTS.json file
-            fs.writeFileSync(`${input_1.Input.RELEASE_ENVIRONMENTS_KEY}.json`, JSON.stringify(releaseEnvironments, null, 2));
-        }
-        else {
-            console.log(`No release environments found for issue ${input_1.Input.JIRA_ISSUE_KEY}. Skipping file export.`);
-        }
+        const issueInfo = yield (0, jira_helper_1.jiraIssueInfo)();
+        console.log(`Issue`, issueInfo);
+        // Export the release environments
+        core.setOutput(input_1.Input.OUTPUT_KEY, JSON.stringify(issueInfo));
     }
 }))();
 
@@ -37620,7 +37612,7 @@ exports.Input = {
     JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
     JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
     JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build').split(','),
-    RELEASE_ENVIRONMENTS_KEY: getInput('RELEASE_ENVIRONMENTS_KEY', 'JIRA_ISSUE_INFO'),
+    OUTPUT_KEY: getInput('OUTPUT_KEY', 'JIRA_ISSUE_INFO'),
     JIRA_ISSUE_KEY: getJiraIssueKey(),
     JIRA_TYPE_TRANSITION: getJiraTypeTransition()
 };
@@ -37753,14 +37745,6 @@ module.exports = require("node:crypto");
 
 "use strict";
 module.exports = require("node:events");
-
-/***/ }),
-
-/***/ 7561:
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("node:fs");
 
 /***/ }),
 
@@ -39661,7 +39645,7 @@ const File = _File
 
 /***/ }),
 
-/***/ 7972:
+/***/ 2777:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
 "use strict";
@@ -39678,8 +39662,8 @@ __nccwpck_require__.d(__webpack_exports__, {
 
 // UNUSED EXPORTS: default
 
-// EXTERNAL MODULE: external "node:fs"
-var external_node_fs_ = __nccwpck_require__(7561);
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = require("node:fs");
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = require("node:path");
 // EXTERNAL MODULE: ./node_modules/node-domexception/index.js
@@ -39696,13 +39680,13 @@ var fetch_blob = __nccwpck_require__(1410);
 
 
 
-const { stat } = external_node_fs_.promises
+const { stat } = external_node_fs_namespaceObject.promises
 
 /**
  * @param {string} path filepath on the disk
  * @param {string} [type] mimetype to use
  */
-const blobFromSync = (path, type) => fromBlob((0,external_node_fs_.statSync)(path), path, type)
+const blobFromSync = (path, type) => fromBlob((0,external_node_fs_namespaceObject.statSync)(path), path, type)
 
 /**
  * @param {string} path filepath on the disk
@@ -39722,7 +39706,7 @@ const fileFrom = (path, type) => stat(path).then(stat => fromFile(stat, path, ty
  * @param {string} path filepath on the disk
  * @param {string} [type] mimetype to use
  */
-const fileFromSync = (path, type) => fromFile((0,external_node_fs_.statSync)(path), path, type)
+const fileFromSync = (path, type) => fromFile((0,external_node_fs_namespaceObject.statSync)(path), path, type)
 
 // @ts-ignore
 const fromBlob = (stat, path, type = '') => new fetch_blob/* default */.Z([new BlobDataItem({
@@ -39776,7 +39760,7 @@ class BlobDataItem {
     if (mtimeMs > this.lastModified) {
       throw new node_domexception('The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.', 'NotReadableError')
     }
-    yield * (0,external_node_fs_.createReadStream)(this.#path, {
+    yield * (0,external_node_fs_namespaceObject.createReadStream)(this.#path, {
       start: this.#start,
       end: this.#start + this.size - 1
     })
@@ -41867,8 +41851,8 @@ class AbortError extends FetchBaseError {
 	}
 }
 
-// EXTERNAL MODULE: ./node_modules/fetch-blob/from.js + 1 modules
-var from = __nccwpck_require__(7972);
+// EXTERNAL MODULE: ./node_modules/fetch-blob/from.js + 2 modules
+var from = __nccwpck_require__(2777);
 ;// CONCATENATED MODULE: ./node_modules/node-fetch/src/index.js
 /**
  * Index.js

@@ -1,7 +1,7 @@
+import * as core from '@actions/core'
 import { Input } from './utils/input'
 import { Fetch } from './utils/fetch'
 import { jiraIssueTransition, jiraIssueInfo } from './helper/jira-helper'
-const fs = require('node:fs');
 
 const initFetch = () => {
   Fetch.authorization = `Basic ${Buffer.from(`${Input.JIRA_USER_EMAIL}:${Input.JIRA_API_TOKEN}`).toString('base64')}`
@@ -28,21 +28,10 @@ const initFetch = () => {
   }
 
   if (Input.ACTIONS_MODE === 'IssueInfo') {
-    const releaseEnvironments = await jiraIssueInfo();
-    console.log(`Release environments for issue`, releaseEnvironments)
+    const issueInfo = await jiraIssueInfo();
+    console.log(`Issue`, issueInfo)
 
-    if (releaseEnvironments) {
-      // Export the release environments
-      process.env[Input.RELEASE_ENVIRONMENTS_KEY] = JSON.stringify(releaseEnvironments)
-      console.log(`Release environments for issue ${releaseEnvironments.key}:`, process.env[Input.RELEASE_ENVIRONMENTS_KEY])
-
-      // Export to RELEASE_ENVIRONMENTS.json file
-      fs.writeFileSync(
-        `${Input.RELEASE_ENVIRONMENTS_KEY}.json`,
-        JSON.stringify(releaseEnvironments, null, 2)
-      )
-    } else {
-      console.log(`No release environments found for issue ${Input.JIRA_ISSUE_KEY}. Skipping file export.`)
-    }
+    // Export the release environments
+    core.setOutput(Input.OUTPUT_KEY, JSON.stringify(issueInfo));
   }
 })();
