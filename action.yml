@@ -11,12 +11,8 @@ inputs:
     description: 'Jira API token'
     required: true
   JIRA_ISSUE_KEY:
-    description: 'Jira issue key, e.g. SOLE-5227'
+    description: 'Jira issue key, e.g. ABC-1234'
     required: true
-  JIRA_ISSUE_APPROVED_STATUS:
-    description: 'Jira issue status required for approval, e.g. Release Approved'
-    required: false
-    default: 'Release Approved'
   JIRA_ENV_COLUMNS:
     description: 'Comma separated columns for environment table, e.g. Environment,Branch,Path to Build'
     required: false

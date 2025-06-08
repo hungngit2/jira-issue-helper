@@ -37366,10 +37366,6 @@ const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     }
     const ticketStatus = jiraIssue.fields.status.name;
     console.log(`Issue ${input_1.Input.JIRA_ISSUE_KEY} status: ${ticketStatus}`);
-    if (ticketStatus !== input_1.Input.JIRA_ISSUE_APPROVED_STATUS) {
-        console.log(`Issue ${input_1.Input.JIRA_ISSUE_KEY} is not in the approved status: ${input_1.Input.JIRA_ISSUE_APPROVED_STATUS}`);
-        return;
-    }
     const environmentContents = Array.isArray((_a = jiraIssue.fields.environment) === null || _a === void 0 ? void 0 : _a.content)
         ? jiraIssue.fields.environment.content
         : [];
@@ -37424,6 +37420,7 @@ const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
         key: jiraIssue.key,
         url: `${input_1.Input.JIRA_BASE_URL}/browse/${jiraIssue.key}`,
         summary: jiraIssue.fields.summary,
+        status: ticketStatus,
         environments: releaseEnvironments
     };
 });
@@ -37460,7 +37457,6 @@ const initFetch = () => {
     console.log('JIRA_BASE_URL:', input_1.Input.JIRA_BASE_URL);
     console.log('JIRA_USER_EMAIL:', input_1.Input.JIRA_USER_EMAIL);
     console.log('JIRA_ISSUE_KEY:', input_1.Input.JIRA_ISSUE_KEY);
-    console.log('JIRA_ISSUE_APPROVED_STATUS:', input_1.Input.JIRA_ISSUE_APPROVED_STATUS);
     console.log('JIRA_ENV_COLUMNS:', input_1.Input.JIRA_ENV_COLUMNS);
     console.log('JIRA_TYPE_TRANSITION:', input_1.Input.JIRA_TYPE_TRANSITION);
     if (!input_1.Input.JIRA_BASE_URL && !input_1.Input.JIRA_USER_EMAIL && !input_1.Input.JIRA_API_TOKEN && !input_1.Input.JIRA_ISSUE_KEY) {
@@ -37623,7 +37619,6 @@ exports.Input = {
     JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
     JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
     JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
-    JIRA_ISSUE_APPROVED_STATUS: getInput('JIRA_ISSUE_APPROVED_STATUS', 'Release Approved'),
     JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build').split(','),
     RELEASE_ENVIRONMENTS_KEY: getInput('RELEASE_ENVIRONMENTS_KEY', 'JIRA_ISSUE_INFO'),
     JIRA_ISSUE_KEY: getJiraIssueKey(),

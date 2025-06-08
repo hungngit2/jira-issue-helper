@@ -37,7 +37,6 @@ export const Input = {
   JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
   JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
   JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
-  JIRA_ISSUE_APPROVED_STATUS: getInput('JIRA_ISSUE_APPROVED_STATUS', 'Release Approved'),
   JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build').split(','),
   RELEASE_ENVIRONMENTS_KEY: getInput('RELEASE_ENVIRONMENTS_KEY', 'JIRA_ISSUE_INFO'),
   JIRA_ISSUE_KEY: getJiraIssueKey(),

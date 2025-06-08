@@ -27,6 +27,7 @@ export interface JiraIssueInfo {
   key: string
   url: string
   summary: string
+  status?: string
   environments: EnvironmentData[]
 }
 
@@ -90,11 +91,6 @@ export const jiraIssueInfo = async (): Promise<JiraIssueInfo | undefined> => {
 
   const ticketStatus = jiraIssue.fields.status.name
   console.log(`Issue ${Input.JIRA_ISSUE_KEY} status: ${ticketStatus}`)
-
-  if (ticketStatus !== Input.JIRA_ISSUE_APPROVED_STATUS) {
-    console.log(`Issue ${Input.JIRA_ISSUE_KEY} is not in the approved status: ${Input.JIRA_ISSUE_APPROVED_STATUS}`)
-    return
-  }
 
   const environmentContents = Array.isArray(jiraIssue.fields.environment?.content)
     ? (jiraIssue.fields.environment!.content as TableContent[])
@@ -162,6 +158,7 @@ export const jiraIssueInfo = async (): Promise<JiraIssueInfo | undefined> => {
     key: jiraIssue.key,
     url: `${Input.JIRA_BASE_URL}/browse/${jiraIssue.key}`,
     summary: jiraIssue.fields.summary,
+    status: ticketStatus,
     environments: releaseEnvironments
   }
 }
