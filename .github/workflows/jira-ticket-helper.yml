@@ -1,0 +1,49 @@
+name: Jira Ticket Transition and Environment Info
+on:
+  workflow_dispatch:
+    inputs:
+      JIRA_BASE_URL:
+        description: 'Jira base URL, e.g. https://your-domain.atlassian.net'
+        required: true
+      JIRA_USER_EMAIL:
+        description: 'Jira user email, e.g. yourname@your-domain'
+        required: true
+      JIRA_API_TOKEN:
+        description: 'Jira API token'
+        required: true
+      JIRA_ISSUE_KEY:
+        description: 'Jira issue key, e.g. SOLE-5227'
+        required: false
+      JIRA_ISSUE_APPROVED_STATUS:
+        description: 'Jira issue status required for approval, e.g. Release Approved'
+        required: false
+        default: 'Release Approved'
+      JIRA_ENV_COLUMNS:
+        description: 'Comma separated columns for environment table, e.g. Environment,Branch,Path to Build'
+        required: false
+        default: 'Environment,Branch,Path to Build'
+      PR_TITLE_PATTERN:
+        description: 'Default: ^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?'
+        required: false
+        default: '^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?'
+      JIRA_ISSUE_TYPE_TRANSITION:
+        description: 'Default: "Story:Code Review;Bug:Code Review"'
+        required: false
+        default: 'Story:Code Review;Bug:Code Review'
+jobs:
+  jira-release-info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Jira Ticket Helper
+        uses: ./
+        with:
+          JIRA_BASE_URL: ${{ github.event.inputs.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ github.event.inputs.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ github.event.inputs.JIRA_API_TOKEN }}
+          JIRA_ISSUE_KEY: ${{ github.event.inputs.JIRA_ISSUE_KEY }}
+          JIRA_ISSUE_APPROVED_STATUS: ${{ github.event.inputs.JIRA_ISSUE_APPROVED_STATUS }}
+          JIRA_ENV_COLUMNS: ${{ github.event.inputs.JIRA_ENV_COLUMNS }}
+          PR_TITLE_PATTERN: ${{ github.event.inputs.PR_TITLE_PATTERN }}
+          JIRA_ISSUE_TYPE_TRANSITION: ${{ github.event.inputs.JIRA_ISSUE_TYPE_TRANSITION }}

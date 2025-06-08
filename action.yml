@@ -1,15 +1,26 @@
-name: 'Jira Issue Tranision'
-description: 'Jira Issue Tranision'
+name: 'Jira Ticket Transition and Environment Info'
+description: 'Fetches Jira ticket release information and updates the environment table in the ticket.'
 inputs:
   JIRA_BASE_URL:
-    description: 'https://your-domain.atlassian.net'
+    description: 'Jira base URL, e.g. https://your-domain.atlassian.net'
     required: true
   JIRA_USER_EMAIL:
-    description: 'yourname@your-domain'
+    description: 'Jira user email, e.g. yourname@your-domain'
     required: true
   JIRA_API_TOKEN:
-    description: 'Jira API Token'
+    description: 'Jira API token'
     required: true
+  JIRA_ISSUE_KEY:
+    description: 'Jira issue key, e.g. SOLE-5227'
+    required: true
+  JIRA_ISSUE_APPROVED_STATUS:
+    description: 'Jira issue status required for approval, e.g. Release Approved'
+    required: false
+    default: 'Release Approved'
+  JIRA_ENV_COLUMNS:
+    description: 'Comma separated columns for environment table, e.g. Environment,Branch,Path to Build'
+    required: false
+    default: 'Environment,Branch,Path to Build'
   PR_TITLE_PATTERN:
     description: 'Default: ^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?'
     required: false

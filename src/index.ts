@@ -28,14 +28,14 @@ const initFetch = () => {
     await jiraIssueTransition();
   }
 
-  if (Input.ACTIONS_MODE === 'ReleaseInfo') {
+  if (Input.ACTIONS_MODE === 'IssueInfo') {
     const releaseEnvironments = await jiraIssueInfo();
     console.log(`Release environments for issue`, releaseEnvironments)
 
     if (releaseEnvironments) {
       // Export the release environments
       process.env[Input.RELEASE_ENVIRONMENTS_KEY] = JSON.stringify(releaseEnvironments)
-      console.log(`Release environments for issue ${Input.JIRA_ISSUE_KEY}:`, process.env[Input.RELEASE_ENVIRONMENTS_KEY])
+      console.log(`Release environments for issue ${releaseEnvironments.key}:`, process.env[Input.RELEASE_ENVIRONMENTS_KEY])
 
       // Export to RELEASE_ENVIRONMENTS.json file
       fs.writeFileSync(

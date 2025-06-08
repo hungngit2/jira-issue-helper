@@ -1,1 +1,4 @@
 node_modules
+dist/37.index.js
+package-lock.json
+yarn.lock

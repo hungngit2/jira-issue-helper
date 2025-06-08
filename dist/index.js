@@ -37333,12 +37333,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.jiraIssueTransition = void 0;
+exports.jiraIssueInfo = exports.jiraIssueTransition = void 0;
 const input_1 = __nccwpck_require__(5073);
 const fetch_1 = __nccwpck_require__(7393);
 const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* () {
     const jiraIssue = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}`);
-    if (!jiraIssue) {
+    if (!jiraIssue || (jiraIssue === null || jiraIssue === void 0 ? void 0 : jiraIssue.key) !== input_1.Input.JIRA_ISSUE_KEY) {
         console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
         return;
     }
@@ -37357,6 +37357,77 @@ const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* ()
     yield fetch_1.default.post(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id } } });
 });
 exports.jiraIssueTransition = jiraIssueTransition;
+const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const jiraIssue = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}`);
+    if (!jiraIssue || (jiraIssue === null || jiraIssue === void 0 ? void 0 : jiraIssue.key) !== input_1.Input.JIRA_ISSUE_KEY) {
+        console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
+        return;
+    }
+    const ticketStatus = jiraIssue.fields.status.name;
+    console.log(`Issue ${input_1.Input.JIRA_ISSUE_KEY} status: ${ticketStatus}`);
+    if (ticketStatus !== input_1.Input.JIRA_ISSUE_APPROVED_STATUS) {
+        console.log(`Issue ${input_1.Input.JIRA_ISSUE_KEY} is not in the approved status: ${input_1.Input.JIRA_ISSUE_APPROVED_STATUS}`);
+        return;
+    }
+    const environmentContents = Array.isArray((_a = jiraIssue.fields.environment) === null || _a === void 0 ? void 0 : _a.content)
+        ? jiraIssue.fields.environment.content
+        : [];
+    if (!(environmentContents === null || environmentContents === void 0 ? void 0 : environmentContents.length)) {
+        console.log(`No environment information found for issue ${input_1.Input.JIRA_ISSUE_KEY}`);
+        return;
+    }
+    const [envColName, branchColName, buildPathsColName] = input_1.Input.JIRA_ENV_COLUMNS.map((col) => col.trim());
+    const findColumnIndex = (headerTexts, columnName) => {
+        return headerTexts.findIndex(text => text === columnName);
+    };
+    const releaseEnvironments = environmentContents.map((content) => {
+        var _a, _b;
+        if (content.type !== 'table')
+            return null;
+        const rows = ((_a = content.content) === null || _a === void 0 ? void 0 : _a.filter((row) => row.type === 'tableRow')) || [];
+        if (rows.length === 0)
+            return null;
+        const headerCells = ((_b = rows[0]) === null || _b === void 0 ? void 0 : _b.content) || [];
+        const headerTexts = headerCells.map((cell) => { var _a, _b, _c, _d, _e; return ((_e = (_d = (_c = (_b = (_a = cell.content) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.text) === null || _e === void 0 ? void 0 : _e.trim()) || ''; });
+        if (headerTexts.length < 3) {
+            console.log('Table must have at least 3 columns:', headerTexts);
+            return null;
+        }
+        const envColIndex = findColumnIndex(headerTexts, envColName);
+        const branchColIndex = findColumnIndex(headerTexts, branchColName);
+        const buildPathsColIndex = findColumnIndex(headerTexts, buildPathsColName);
+        if (envColIndex === -1 || branchColIndex === -1 || buildPathsColIndex === -1) {
+            console.log('Missing required columns. Required columns:', [envColName, branchColName, buildPathsColName]);
+            console.log('Found columns:', headerTexts);
+            return null;
+        }
+        const dataRows = rows.slice(1) || [];
+        const environmentData = dataRows.map((row) => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+            const cells = row.content || [];
+            const env = ((_e = (_d = (_c = (_b = (_a = cells[envColIndex]) === null || _a === void 0 ? void 0 : _a.content) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.content) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '';
+            const branch = ((_k = (_j = (_h = (_g = (_f = cells[branchColIndex]) === null || _f === void 0 ? void 0 : _f.content) === null || _g === void 0 ? void 0 : _g[0]) === null || _h === void 0 ? void 0 : _h.content) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.text) || '';
+            const buildPaths = (((_l = cells[buildPathsColIndex]) === null || _l === void 0 ? void 0 : _l.content) || [])
+                .map((cell) => { var _a, _b, _c, _d, _e, _f; return ((_b = (_a = cell.content) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text) || ((_f = (_e = (_d = (_c = cell.content) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.content) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.text); })
+                .filter(Boolean);
+            return {
+                env,
+                branch,
+                buildPaths
+            };
+        });
+        return environmentData;
+    }).filter((data) => data !== null)
+        .reduce((acc, curr) => [...acc, ...curr], []);
+    return {
+        key: jiraIssue.key,
+        url: `${input_1.Input.JIRA_BASE_URL}/browse/${jiraIssue.key}`,
+        summary: jiraIssue.fields.summary,
+        environments: releaseEnvironments
+    };
+});
+exports.jiraIssueInfo = jiraIssueInfo;
 
 
 /***/ }),
@@ -37379,18 +37450,40 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const input_1 = __nccwpck_require__(5073);
 const fetch_1 = __nccwpck_require__(7393);
 const jira_helper_1 = __nccwpck_require__(8024);
+const fs = __nccwpck_require__(7561);
 const initFetch = () => {
     fetch_1.Fetch.authorization = `Basic ${Buffer.from(`${input_1.Input.JIRA_USER_EMAIL}:${input_1.Input.JIRA_API_TOKEN}`).toString('base64')}`;
     fetch_1.Fetch.apiServer = `${input_1.Input.JIRA_BASE_URL}/rest/api/3`;
 };
 (() => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('ACTIONS_MODE:', input_1.Input.ACTIONS_MODE);
     console.log('JIRA_BASE_URL:', input_1.Input.JIRA_BASE_URL);
     console.log('JIRA_USER_EMAIL:', input_1.Input.JIRA_USER_EMAIL);
     console.log('JIRA_ISSUE_KEY:', input_1.Input.JIRA_ISSUE_KEY);
+    console.log('JIRA_ISSUE_APPROVED_STATUS:', input_1.Input.JIRA_ISSUE_APPROVED_STATUS);
+    console.log('JIRA_ENV_COLUMNS:', input_1.Input.JIRA_ENV_COLUMNS);
     console.log('JIRA_TYPE_TRANSITION:', input_1.Input.JIRA_TYPE_TRANSITION);
-    if (!!input_1.Input.JIRA_BASE_URL && !!input_1.Input.JIRA_USER_EMAIL && !!input_1.Input.JIRA_API_TOKEN && !!input_1.Input.JIRA_ISSUE_KEY) {
-        initFetch();
+    if (!input_1.Input.JIRA_BASE_URL && !input_1.Input.JIRA_USER_EMAIL && !input_1.Input.JIRA_API_TOKEN && !input_1.Input.JIRA_ISSUE_KEY) {
+        console.log('No JIRA configuration provided. Exiting.');
+        return;
+    }
+    initFetch();
+    if (input_1.Input.ACTIONS_MODE === 'Transition') {
         yield (0, jira_helper_1.jiraIssueTransition)();
+    }
+    if (input_1.Input.ACTIONS_MODE === 'IssueInfo') {
+        const releaseEnvironments = yield (0, jira_helper_1.jiraIssueInfo)();
+        console.log(`Release environments for issue`, releaseEnvironments);
+        if (releaseEnvironments) {
+            // Export the release environments
+            process.env[input_1.Input.RELEASE_ENVIRONMENTS_KEY] = JSON.stringify(releaseEnvironments);
+            console.log(`Release environments for issue ${releaseEnvironments.key}:`, process.env[input_1.Input.RELEASE_ENVIRONMENTS_KEY]);
+            // Export to RELEASE_ENVIRONMENTS.json file
+            fs.writeFileSync(`${input_1.Input.RELEASE_ENVIRONMENTS_KEY}.json`, JSON.stringify(releaseEnvironments, null, 2));
+        }
+        else {
+            console.log(`No release environments found for issue ${input_1.Input.JIRA_ISSUE_KEY}. Skipping file export.`);
+        }
     }
 }))();
 
@@ -37503,31 +37596,38 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Input = void 0;
 const core = __nccwpck_require__(2186);
 const github = __nccwpck_require__(5438);
+const getInput = (envKey, fallback = '') => (process.env[envKey] || core.getInput(envKey) || fallback).trim();
+const getJiraIssueKey = () => {
+    var _a, _b, _c;
+    const jiraIssueKey = getInput('JIRA_ISSUE_KEY');
+    if (jiraIssueKey)
+        return jiraIssueKey;
+    const pattern = new RegExp(getInput('PR_TITLE_PATTERN', '^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?'));
+    const title = ((_a = github.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.title) ||
+        ((_b = github.context.payload.issue) === null || _b === void 0 ? void 0 : _b.title) ||
+        '';
+    return ((_c = title.match(pattern)) === null || _c === void 0 ? void 0 : _c[1]) || '';
+};
+const getJiraTypeTransition = () => {
+    const transitions = getInput('JIRA_ISSUE_TYPE_TRANSITION', 'Story:Code Review;Bug:Code Review').split(';');
+    return transitions.reduce((acc, transition) => {
+        const [issueType, transitionName] = transition.split(':');
+        if (issueType && transitionName) {
+            acc[issueType.trim()] = transitionName.trim();
+        }
+        return acc;
+    }, {});
+};
 exports.Input = {
-    JIRA_BASE_URL: (process.env.JIRA_BASE_URL || core.getInput('JIRA_BASE_URL') || '').trim(),
-    JIRA_USER_EMAIL: (process.env.JIRA_USER_EMAIL || core.getInput('JIRA_USER_EMAIL') || '').trim(),
-    JIRA_API_TOKEN: (process.env.JIRA_API_TOKEN || core.getInput('JIRA_API_TOKEN') || '').trim(),
-    JIRA_ISSUE_KEY: (() => {
-        var _a, _b, _c;
-        const pattern = new RegExp(process.env.PR_TITLE_PATTERN ||
-            core.getInput('PR_TITLE_PATTERN') ||
-            '^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?');
-        const title = ((_a = github.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.title) ||
-            ((_b = github.context.payload.issue) === null || _b === void 0 ? void 0 : _b.title) ||
-            '';
-        return ((_c = title.match(pattern)) === null || _c === void 0 ? void 0 : _c[1]) || '';
-    })(),
-    JIRA_TYPE_TRANSITION: (() => {
-        const transitions = (process.env.JIRA_ISSUE_TYPE_TRANSITION || core.getInput('JIRA_ISSUE_TYPE_TRANSITION') || 'Story:Code Review;Bug:Code Review').trim().split(';');
-        const transitionByIssueType = {};
-        transitions.forEach(transition => {
-            const [issueType, transitionName] = transition.split(':');
-            if (issueType && transitionName) {
-                transitionByIssueType[issueType.trim()] = transitionName.trim();
-            }
-        });
-        return transitionByIssueType;
-    })()
+    ACTIONS_MODE: getInput('ACTIONS_MODE') || (getInput('JIRA_ISSUE_KEY') ? 'IssueInfo' : 'Transition'),
+    JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
+    JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
+    JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
+    JIRA_ISSUE_APPROVED_STATUS: getInput('JIRA_ISSUE_APPROVED_STATUS', 'Release Approved'),
+    JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build').split(','),
+    RELEASE_ENVIRONMENTS_KEY: getInput('RELEASE_ENVIRONMENTS_KEY', 'JIRA_ISSUE_INFO'),
+    JIRA_ISSUE_KEY: getJiraIssueKey(),
+    JIRA_TYPE_TRANSITION: getJiraTypeTransition()
 };
 
 
@@ -37658,6 +37758,14 @@ module.exports = require("node:crypto");
 
 "use strict";
 module.exports = require("node:events");
+
+/***/ }),
+
+/***/ 7561:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:fs");
 
 /***/ }),
 
@@ -39558,7 +39666,7 @@ const File = _File
 
 /***/ }),
 
-/***/ 2777:
+/***/ 7972:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
 "use strict";
@@ -39575,8 +39683,8 @@ __nccwpck_require__.d(__webpack_exports__, {
 
 // UNUSED EXPORTS: default
 
-;// CONCATENATED MODULE: external "node:fs"
-const external_node_fs_namespaceObject = require("node:fs");
+// EXTERNAL MODULE: external "node:fs"
+var external_node_fs_ = __nccwpck_require__(7561);
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = require("node:path");
 // EXTERNAL MODULE: ./node_modules/node-domexception/index.js
@@ -39593,13 +39701,13 @@ var fetch_blob = __nccwpck_require__(1410);
 
 
 
-const { stat } = external_node_fs_namespaceObject.promises
+const { stat } = external_node_fs_.promises
 
 /**
  * @param {string} path filepath on the disk
  * @param {string} [type] mimetype to use
  */
-const blobFromSync = (path, type) => fromBlob((0,external_node_fs_namespaceObject.statSync)(path), path, type)
+const blobFromSync = (path, type) => fromBlob((0,external_node_fs_.statSync)(path), path, type)
 
 /**
  * @param {string} path filepath on the disk
@@ -39619,7 +39727,7 @@ const fileFrom = (path, type) => stat(path).then(stat => fromFile(stat, path, ty
  * @param {string} path filepath on the disk
  * @param {string} [type] mimetype to use
  */
-const fileFromSync = (path, type) => fromFile((0,external_node_fs_namespaceObject.statSync)(path), path, type)
+const fileFromSync = (path, type) => fromFile((0,external_node_fs_.statSync)(path), path, type)
 
 // @ts-ignore
 const fromBlob = (stat, path, type = '') => new fetch_blob/* default */.Z([new BlobDataItem({
@@ -39673,7 +39781,7 @@ class BlobDataItem {
     if (mtimeMs > this.lastModified) {
       throw new node_domexception('The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.', 'NotReadableError')
     }
-    yield * (0,external_node_fs_namespaceObject.createReadStream)(this.#path, {
+    yield * (0,external_node_fs_.createReadStream)(this.#path, {
       start: this.#start,
       end: this.#start + this.size - 1
     })
@@ -41764,8 +41872,8 @@ class AbortError extends FetchBaseError {
 	}
 }
 
-// EXTERNAL MODULE: ./node_modules/fetch-blob/from.js + 2 modules
-var from = __nccwpck_require__(2777);
+// EXTERNAL MODULE: ./node_modules/fetch-blob/from.js + 1 modules
+var from = __nccwpck_require__(7972);
 ;// CONCATENATED MODULE: ./node_modules/node-fetch/src/index.js
 /**
  * Index.js
