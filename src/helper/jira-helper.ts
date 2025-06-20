@@ -88,9 +88,19 @@ export const jiraIssueTransition = async () => {
 
 const extractTextFromParagraphs = (paragraphs: Paragraph[] = []): string[] => {
   return paragraphs
-    .map((p: Paragraph) => p.text || p.content?.[0]?.text)
-    .filter((text): text is string => !!text)
-    .map(text => text.trim())
+    .reduce((acc: string[], p: Paragraph) => {
+      if (p.text) {
+        acc.push(p.text)
+      } else if (p.content) {
+        const joinedText = p.content.map(node => node.text || '').join('')
+        if (joinedText) {
+          acc.push(joinedText)
+        }
+      }
+      return acc
+    }, [])
+    .map((text: string) => text.trim())
+    .filter(Boolean)
 }
 
 const parseEnvironmentDataFromTable = (content: TableContent): EnvironmentData[] | null => {
