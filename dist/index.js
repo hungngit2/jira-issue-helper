@@ -37361,9 +37361,20 @@ const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* ()
 exports.jiraIssueTransition = jiraIssueTransition;
 const extractTextFromParagraphs = (paragraphs = []) => {
     return paragraphs
-        .map((p) => { var _a, _b; return p.text || ((_b = (_a = p.content) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text); })
-        .filter((text) => !!text)
-        .map(text => text.trim());
+        .reduce((acc, p) => {
+        if (p.text) {
+            acc.push(p.text);
+        }
+        else if (p.content) {
+            const joinedText = p.content.map(node => node.text || '').join('');
+            if (joinedText) {
+                acc.push(joinedText);
+            }
+        }
+        return acc;
+    }, [])
+        .map((text) => text.trim())
+        .filter(Boolean);
 };
 const parseEnvironmentDataFromTable = (content) => {
     var _a;
