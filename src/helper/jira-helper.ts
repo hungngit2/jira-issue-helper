@@ -1,6 +1,6 @@
 import { Input } from '../utils/input'
 import fetch from '../utils/fetch'
-
+import { camelCase } from 'lodash'
 
 interface JiraIssue {
   key: string;
@@ -32,10 +32,11 @@ export interface JiraIssueInfo {
 }
 
 interface EnvironmentData {
-  env: string
-  branch: string
-  buildPaths: string[]
-  upsertPaths: string[]
+  env: string;
+  branch: string;
+  buildPaths: string[];
+  upsertPaths: string[];
+  [dynamicColumn: string]: string[] | string | undefined;
 }
 
 interface Paragraph {
@@ -103,7 +104,7 @@ const extractTextFromParagraphs = (paragraphs: Paragraph[] = []): string[] => {
     .filter(Boolean)
 }
 
-const parseEnvironmentDataFromTable = (content: TableContent): EnvironmentData[] | null => {
+export const parseEnvironmentDataFromTable = (content: TableContent): EnvironmentData[] | null => {
   if (content.type !== 'table' || !content.content) return null
 
   const rows = content.content.filter((row: TableRow) => row.type === 'tableRow')
@@ -121,6 +122,12 @@ const parseEnvironmentDataFromTable = (content: TableContent): EnvironmentData[]
   const buildPathsColIndex = headerTexts.findIndex(text => text === buildPathsColName)
   const upsertPathsColIndex = headerTexts.findIndex(text => text === upsertPathsColName)
 
+  const knownIndexes = [envColIndex, branchColIndex, buildPathsColIndex, upsertPathsColIndex].filter(i => i >= 0)
+  const dynamicColumns: { key: string, index: number }[] = headerTexts
+    .map((text, idx) => ({ text, idx }))
+    .filter(({ idx }) => !knownIndexes.includes(idx))
+    .map(({ text, idx }) => ({ key: camelCase(text), index: idx }))
+
   if (envColIndex === -1 || branchColIndex === -1 || (buildPathsColIndex === -1 && upsertPathsColIndex === -1)) {
     console.log('Missing required columns. Required:', [envColName, branchColName, `${buildPathsColName} or ${upsertPathsColName}`])
     console.log('Found columns:', headerTexts)
@@ -135,7 +142,12 @@ const parseEnvironmentDataFromTable = (content: TableContent): EnvironmentData[]
     const buildPaths = buildPathsColIndex > -1 ? extractTextFromParagraphs(cells[buildPathsColIndex]?.content) : []
     const upsertPaths = upsertPathsColIndex > -1 ? extractTextFromParagraphs(cells[upsertPathsColIndex]?.content) : []
 
-    return { env, branch, buildPaths, upsertPaths }
+    const dynamicData: Record<string, string[]> = {}
+    dynamicColumns.forEach(({ key, index }) => {
+      dynamicData[key] = extractTextFromParagraphs(cells[index]?.content)
+    })
+
+    return { env, branch, buildPaths, upsertPaths, ...dynamicData }
   })
 }
 

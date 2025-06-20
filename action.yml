@@ -14,9 +14,8 @@ inputs:
     description: 'Jira issue key, e.g. ABC-1234'
     required: true
   JIRA_ENV_COLUMNS:
-    description: 'Comma separated columns for environment table, e.g. Environment,Branch,Path to Build'
+    description: 'Comma separated columns for environment table, e.g. Environment,Branch,Path to Build,Path to Upsert'
     required: false
-    default: 'Environment,Branch,Path to Build'
   PR_TITLE_PATTERN:
     description: 'Default: ^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?'
     required: false
