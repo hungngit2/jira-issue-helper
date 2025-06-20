@@ -37338,89 +37338,85 @@ const input_1 = __nccwpck_require__(5073);
 const fetch_1 = __nccwpck_require__(7393);
 const jiraIssueTransition = () => __awaiter(void 0, void 0, void 0, function* () {
     const jiraIssue = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}`);
-    if (!jiraIssue || (jiraIssue === null || jiraIssue === void 0 ? void 0 : jiraIssue.key) !== input_1.Input.JIRA_ISSUE_KEY) {
+    if (!jiraIssue) {
         console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
         return;
     }
     const issueType = jiraIssue.fields.issuetype.name;
     const transitionName = input_1.Input.JIRA_TYPE_TRANSITION[issueType];
     if (!transitionName) {
+        console.log(`No transition configured for issue type "${issueType}"`);
         return;
     }
     const issueTtransitions = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`);
-    console.log(`Transitions for issue ${input_1.Input.JIRA_ISSUE_KEY}:`, issueTtransitions);
     const transition = issueTtransitions.transitions.find((t) => t.name.toLowerCase() === transitionName.toLowerCase());
     if (!transition) {
-        console.log(`Transition "${transitionName}" not found for issue type "${issueType}"`);
+        console.log(`Transition "${transitionName}" not found for issue ${input_1.Input.JIRA_ISSUE_KEY}.`);
+        console.log(`Available transitions: ${issueTtransitions.transitions.map(t => t.name).join(', ')}`);
         return;
     }
     yield fetch_1.default.post(`/issue/${input_1.Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id } } });
+    console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} has been transitioned to "${transition.name}"`);
 });
 exports.jiraIssueTransition = jiraIssueTransition;
+const extractTextFromParagraphs = (paragraphs = []) => {
+    return paragraphs
+        .map((p) => { var _a, _b; return p.text || ((_b = (_a = p.content) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text); })
+        .filter((text) => !!text)
+        .map(text => text.trim());
+};
+const parseEnvironmentDataFromTable = (content) => {
+    var _a;
+    if (content.type !== 'table' || !content.content)
+        return null;
+    const rows = content.content.filter((row) => row.type === 'tableRow');
+    if (rows.length < 2) { // Header + at least one data row
+        return null;
+    }
+    const headerCells = ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.content) || [];
+    const headerTexts = headerCells.map((cell) => (extractTextFromParagraphs(cell.content)[0] || '').trim());
+    const [envColName, branchColName, buildPathsColName, upsertPathsColName] = input_1.Input.JIRA_ENV_COLUMNS.map((col) => col.trim());
+    const envColIndex = headerTexts.findIndex(text => text === envColName);
+    const branchColIndex = headerTexts.findIndex(text => text === branchColName);
+    const buildPathsColIndex = headerTexts.findIndex(text => text === buildPathsColName);
+    const upsertPathsColIndex = headerTexts.findIndex(text => text === upsertPathsColName);
+    if (envColIndex === -1 || branchColIndex === -1 || (buildPathsColIndex === -1 && upsertPathsColIndex === -1)) {
+        console.log('Missing required columns. Required:', [envColName, branchColName, `${buildPathsColName} or ${upsertPathsColName}`]);
+        console.log('Found columns:', headerTexts);
+        return null;
+    }
+    const dataRows = rows.slice(1);
+    return dataRows.map((row) => {
+        var _a, _b, _c, _d;
+        const cells = row.content || [];
+        const env = extractTextFromParagraphs((_a = cells[envColIndex]) === null || _a === void 0 ? void 0 : _a.content)[0] || '';
+        const branch = extractTextFromParagraphs((_b = cells[branchColIndex]) === null || _b === void 0 ? void 0 : _b.content)[0] || '';
+        const buildPaths = buildPathsColIndex > -1 ? extractTextFromParagraphs((_c = cells[buildPathsColIndex]) === null || _c === void 0 ? void 0 : _c.content) : [];
+        const upsertPaths = upsertPathsColIndex > -1 ? extractTextFromParagraphs((_d = cells[upsertPathsColIndex]) === null || _d === void 0 ? void 0 : _d.content) : [];
+        return { env, branch, buildPaths, upsertPaths };
+    });
+};
 const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const jiraIssue = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}`);
-    if (!jiraIssue || (jiraIssue === null || jiraIssue === void 0 ? void 0 : jiraIssue.key) !== input_1.Input.JIRA_ISSUE_KEY) {
+    if (!jiraIssue) {
         console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
         return;
     }
-    const ticketStatus = jiraIssue.fields.status.name;
-    console.log(`Issue ${input_1.Input.JIRA_ISSUE_KEY} status: ${ticketStatus}`);
-    const environmentContents = Array.isArray((_a = jiraIssue.fields.environment) === null || _a === void 0 ? void 0 : _a.content)
-        ? jiraIssue.fields.environment.content
-        : [];
-    if (!(environmentContents === null || environmentContents === void 0 ? void 0 : environmentContents.length)) {
+    const environmentContents = ((_a = jiraIssue.fields.environment) === null || _a === void 0 ? void 0 : _a.content) || [];
+    if (environmentContents.length === 0) {
         console.log(`No environment information found for issue ${input_1.Input.JIRA_ISSUE_KEY}`);
         return;
     }
-    const [envColName, branchColName, buildPathsColName] = input_1.Input.JIRA_ENV_COLUMNS.map((col) => col.trim());
-    const findColumnIndex = (headerTexts, columnName) => {
-        return headerTexts.findIndex(text => text === columnName);
-    };
-    const releaseEnvironments = environmentContents.map((content) => {
-        var _a, _b;
-        if (content.type !== 'table')
-            return null;
-        const rows = ((_a = content.content) === null || _a === void 0 ? void 0 : _a.filter((row) => row.type === 'tableRow')) || [];
-        if (rows.length === 0)
-            return null;
-        const headerCells = ((_b = rows[0]) === null || _b === void 0 ? void 0 : _b.content) || [];
-        const headerTexts = headerCells.map((cell) => { var _a, _b, _c, _d, _e; return ((_e = (_d = (_c = (_b = (_a = cell.content) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.text) === null || _e === void 0 ? void 0 : _e.trim()) || ''; });
-        if (headerTexts.length < 3) {
-            console.log('Table must have at least 3 columns:', headerTexts);
-            return null;
-        }
-        const envColIndex = findColumnIndex(headerTexts, envColName);
-        const branchColIndex = findColumnIndex(headerTexts, branchColName);
-        const buildPathsColIndex = findColumnIndex(headerTexts, buildPathsColName);
-        if (envColIndex === -1 || branchColIndex === -1 || buildPathsColIndex === -1) {
-            console.log('Missing required columns. Required columns:', [envColName, branchColName, buildPathsColName]);
-            console.log('Found columns:', headerTexts);
-            return null;
-        }
-        const dataRows = rows.slice(1) || [];
-        const environmentData = dataRows.map((row) => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
-            const cells = row.content || [];
-            const env = ((_e = (_d = (_c = (_b = (_a = cells[envColIndex]) === null || _a === void 0 ? void 0 : _a.content) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.content) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '';
-            const branch = ((_k = (_j = (_h = (_g = (_f = cells[branchColIndex]) === null || _f === void 0 ? void 0 : _f.content) === null || _g === void 0 ? void 0 : _g[0]) === null || _h === void 0 ? void 0 : _h.content) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.text) || '';
-            const buildPaths = (((_l = cells[buildPathsColIndex]) === null || _l === void 0 ? void 0 : _l.content) || [])
-                .map((cell) => { var _a, _b, _c, _d, _e, _f; return ((_b = (_a = cell.content) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text) || ((_f = (_e = (_d = (_c = cell.content) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.content) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.text); })
-                .filter(Boolean);
-            return {
-                env,
-                branch,
-                buildPaths
-            };
-        });
-        return environmentData;
-    }).filter((data) => data !== null)
+    const releaseEnvironments = environmentContents
+        .map(parseEnvironmentDataFromTable)
+        .filter((data) => data !== null)
         .reduce((acc, curr) => [...acc, ...curr], []);
     return {
         key: jiraIssue.key,
         url: `${input_1.Input.JIRA_BASE_URL}/browse/${jiraIssue.key}`,
         summary: jiraIssue.fields.summary,
-        status: ticketStatus,
+        status: jiraIssue.fields.status.name,
         environments: releaseEnvironments
     };
 });
@@ -37611,7 +37607,7 @@ exports.Input = {
     JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
     JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
     JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
-    JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build').split(','),
+    JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build,Path to Upsert').split(','),
     OUTPUT_KEY: getInput('OUTPUT_KEY', 'JIRA_ISSUE_INFO'),
     JIRA_ISSUE_KEY: getJiraIssueKey(),
     JIRA_TYPE_TRANSITION: getJiraTypeTransition()

@@ -37,7 +37,7 @@ export const Input = {
   JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
   JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
   JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
-  JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build').split(','),
+  JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build,Path to Upsert').split(','),
   OUTPUT_KEY: getInput('OUTPUT_KEY', 'JIRA_ISSUE_INFO'),
   JIRA_ISSUE_KEY: getJiraIssueKey(),
   JIRA_TYPE_TRANSITION: getJiraTypeTransition()
