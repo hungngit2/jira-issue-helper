@@ -54614,17 +54614,12 @@ const parseEnvironmentDataFromTable = (content) => {
         .map((text, idx) => ({ text, idx }))
         .filter(({ idx }) => !knownIndexes.includes(idx))
         .map(({ text, idx }) => ({ key: (0, lodash_1.camelCase)(text), index: idx }));
-    if (envColIndex === -1 || branchColIndex === -1 || (buildPathsColIndex === -1 && upsertPathsColIndex === -1)) {
-        console.log('Missing required columns. Required:', [envColName, branchColName, `${buildPathsColName} or ${upsertPathsColName}`]);
-        console.log('Found columns:', headerTexts);
-        return null;
-    }
     const dataRows = rows.slice(1);
     return dataRows.map((row) => {
         var _a, _b, _c, _d;
         const cells = row.content || [];
-        const env = extractTextFromParagraphs((_a = cells[envColIndex]) === null || _a === void 0 ? void 0 : _a.content)[0] || '';
-        const branch = extractTextFromParagraphs((_b = cells[branchColIndex]) === null || _b === void 0 ? void 0 : _b.content)[0] || '';
+        const env = envColIndex > -1 ? (extractTextFromParagraphs((_a = cells[envColIndex]) === null || _a === void 0 ? void 0 : _a.content)[0] || '') : '';
+        const branch = branchColIndex > -1 ? (extractTextFromParagraphs((_b = cells[branchColIndex]) === null || _b === void 0 ? void 0 : _b.content)[0] || '') : '';
         const buildPaths = buildPathsColIndex > -1 ? extractTextFromParagraphs((_c = cells[buildPathsColIndex]) === null || _c === void 0 ? void 0 : _c.content) : [];
         const upsertPaths = upsertPathsColIndex > -1 ? extractTextFromParagraphs((_d = cells[upsertPathsColIndex]) === null || _d === void 0 ? void 0 : _d.content) : [];
         const dynamicData = {};

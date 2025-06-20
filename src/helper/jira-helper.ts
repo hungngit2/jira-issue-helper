@@ -128,17 +128,11 @@ export const parseEnvironmentDataFromTable = (content: TableContent): Environmen
     .filter(({ idx }) => !knownIndexes.includes(idx))
     .map(({ text, idx }) => ({ key: camelCase(text), index: idx }))
 
-  if (envColIndex === -1 || branchColIndex === -1 || (buildPathsColIndex === -1 && upsertPathsColIndex === -1)) {
-    console.log('Missing required columns. Required:', [envColName, branchColName, `${buildPathsColName} or ${upsertPathsColName}`])
-    console.log('Found columns:', headerTexts)
-    return null
-  }
-
   const dataRows = rows.slice(1)
   return dataRows.map((row: TableRow) => {
     const cells = row.content || []
-    const env = extractTextFromParagraphs(cells[envColIndex]?.content)[0] || ''
-    const branch = extractTextFromParagraphs(cells[branchColIndex]?.content)[0] || ''
+    const env = envColIndex > -1 ? (extractTextFromParagraphs(cells[envColIndex]?.content)[0] || '') : ''
+    const branch = branchColIndex > -1 ? (extractTextFromParagraphs(cells[branchColIndex]?.content)[0] || '') : ''
     const buildPaths = buildPathsColIndex > -1 ? extractTextFromParagraphs(cells[buildPathsColIndex]?.content) : []
     const upsertPaths = upsertPathsColIndex > -1 ? extractTextFromParagraphs(cells[upsertPathsColIndex]?.content) : []
 
