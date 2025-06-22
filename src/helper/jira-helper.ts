@@ -32,11 +32,7 @@ export interface JiraIssueInfo {
 }
 
 interface EnvironmentData {
-  env: string;
-  branch: string;
-  buildPaths: string[];
-  upsertPaths: string[];
-  [dynamicColumn: string]: string[] | string | undefined;
+  [column: string]: string[];
 }
 
 interface Paragraph {
@@ -114,34 +110,16 @@ export const parseEnvironmentDataFromTable = (content: TableContent): Environmen
 
   const headerCells = rows[0]?.content || []
   const headerTexts = headerCells.map((cell: TableCell) => (extractTextFromParagraphs(cell.content)[0] || '').trim())
-
-  const [envColName, branchColName, buildPathsColName, upsertPathsColName] = Input.JIRA_ENV_COLUMNS.map((col: string) => col.trim())
-
-  const envColIndex = headerTexts.findIndex(text => text === envColName)
-  const branchColIndex = headerTexts.findIndex(text => text === branchColName)
-  const buildPathsColIndex = headerTexts.findIndex(text => text === buildPathsColName)
-  const upsertPathsColIndex = headerTexts.findIndex(text => text === upsertPathsColName)
-
-  const knownIndexes = [envColIndex, branchColIndex, buildPathsColIndex, upsertPathsColIndex].filter(i => i >= 0)
-  const dynamicColumns: { key: string, index: number }[] = headerTexts
-    .map((text, idx) => ({ text, idx }))
-    .filter(({ idx }) => !knownIndexes.includes(idx))
-    .map(({ text, idx }) => ({ key: camelCase(text), index: idx }))
+  const headerKeys = headerTexts.map(text => camelCase(text))
 
   const dataRows = rows.slice(1)
   return dataRows.map((row: TableRow) => {
     const cells = row.content || []
-    const env = envColIndex > -1 ? (extractTextFromParagraphs(cells[envColIndex]?.content)[0] || '') : ''
-    const branch = branchColIndex > -1 ? (extractTextFromParagraphs(cells[branchColIndex]?.content)[0] || '') : ''
-    const buildPaths = buildPathsColIndex > -1 ? extractTextFromParagraphs(cells[buildPathsColIndex]?.content) : []
-    const upsertPaths = upsertPathsColIndex > -1 ? extractTextFromParagraphs(cells[upsertPathsColIndex]?.content) : []
-
-    const dynamicData: Record<string, string[]> = {}
-    dynamicColumns.forEach(({ key, index }) => {
-      dynamicData[key] = extractTextFromParagraphs(cells[index]?.content)
+    const rowData: Record<string, string[]> = {}
+    headerKeys.forEach((key, idx) => {
+      rowData[key] = extractTextFromParagraphs(cells[idx]?.content)
     })
-
-    return { env, branch, buildPaths, upsertPaths, ...dynamicData }
+    return rowData
   })
 }
 

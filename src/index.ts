@@ -13,7 +13,6 @@ const initFetch = () => {
   console.log('JIRA_BASE_URL:', Input.JIRA_BASE_URL)
   console.log('JIRA_USER_EMAIL:', Input.JIRA_USER_EMAIL)
   console.log('JIRA_ISSUE_KEY:', Input.JIRA_ISSUE_KEY)
-  console.log('JIRA_ENV_COLUMNS:', Input.JIRA_ENV_COLUMNS)
   console.log('JIRA_TYPE_TRANSITION:', Input.JIRA_TYPE_TRANSITION)
 
   if (!Input.JIRA_BASE_URL && !Input.JIRA_USER_EMAIL && !Input.JIRA_API_TOKEN && !Input.JIRA_ISSUE_KEY) {

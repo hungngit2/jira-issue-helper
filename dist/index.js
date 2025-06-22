@@ -54604,30 +54604,16 @@ const parseEnvironmentDataFromTable = (content) => {
     }
     const headerCells = ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.content) || [];
     const headerTexts = headerCells.map((cell) => (extractTextFromParagraphs(cell.content)[0] || '').trim());
-    const [envColName, branchColName, buildPathsColName, upsertPathsColName] = input_1.Input.JIRA_ENV_COLUMNS.map((col) => col.trim());
-    const envColIndex = headerTexts.findIndex(text => text === envColName);
-    const branchColIndex = headerTexts.findIndex(text => text === branchColName);
-    const buildPathsColIndex = headerTexts.findIndex(text => text === buildPathsColName);
-    const upsertPathsColIndex = headerTexts.findIndex(text => text === upsertPathsColName);
-    const knownIndexes = [envColIndex, branchColIndex, buildPathsColIndex, upsertPathsColIndex].filter(i => i >= 0);
-    const dynamicColumns = headerTexts
-        .map((text, idx) => ({ text, idx }))
-        .filter(({ idx }) => !knownIndexes.includes(idx))
-        .map(({ text, idx }) => ({ key: (0, lodash_1.camelCase)(text), index: idx }));
+    const headerKeys = headerTexts.map(text => (0, lodash_1.camelCase)(text));
     const dataRows = rows.slice(1);
     return dataRows.map((row) => {
-        var _a, _b, _c, _d;
         const cells = row.content || [];
-        const env = envColIndex > -1 ? (extractTextFromParagraphs((_a = cells[envColIndex]) === null || _a === void 0 ? void 0 : _a.content)[0] || '') : '';
-        const branch = branchColIndex > -1 ? (extractTextFromParagraphs((_b = cells[branchColIndex]) === null || _b === void 0 ? void 0 : _b.content)[0] || '') : '';
-        const buildPaths = buildPathsColIndex > -1 ? extractTextFromParagraphs((_c = cells[buildPathsColIndex]) === null || _c === void 0 ? void 0 : _c.content) : [];
-        const upsertPaths = upsertPathsColIndex > -1 ? extractTextFromParagraphs((_d = cells[upsertPathsColIndex]) === null || _d === void 0 ? void 0 : _d.content) : [];
-        const dynamicData = {};
-        dynamicColumns.forEach(({ key, index }) => {
+        const rowData = {};
+        headerKeys.forEach((key, idx) => {
             var _a;
-            dynamicData[key] = extractTextFromParagraphs((_a = cells[index]) === null || _a === void 0 ? void 0 : _a.content);
+            rowData[key] = extractTextFromParagraphs((_a = cells[idx]) === null || _a === void 0 ? void 0 : _a.content);
         });
-        return Object.assign({ env, branch, buildPaths, upsertPaths }, dynamicData);
+        return rowData;
     });
 };
 exports.parseEnvironmentDataFromTable = parseEnvironmentDataFromTable;
@@ -54688,7 +54674,6 @@ const initFetch = () => {
     console.log('JIRA_BASE_URL:', input_1.Input.JIRA_BASE_URL);
     console.log('JIRA_USER_EMAIL:', input_1.Input.JIRA_USER_EMAIL);
     console.log('JIRA_ISSUE_KEY:', input_1.Input.JIRA_ISSUE_KEY);
-    console.log('JIRA_ENV_COLUMNS:', input_1.Input.JIRA_ENV_COLUMNS);
     console.log('JIRA_TYPE_TRANSITION:', input_1.Input.JIRA_TYPE_TRANSITION);
     if (!input_1.Input.JIRA_BASE_URL && !input_1.Input.JIRA_USER_EMAIL && !input_1.Input.JIRA_API_TOKEN && !input_1.Input.JIRA_ISSUE_KEY) {
         console.log('No JIRA configuration provided. Exiting.');
@@ -54842,7 +54827,6 @@ exports.Input = {
     JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
     JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
     JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
-    JIRA_ENV_COLUMNS: getInput('JIRA_ENV_COLUMNS', 'Environment,Branch,Path to Build,Path to Upsert').split(','),
     OUTPUT_KEY: getInput('OUTPUT_KEY', 'JIRA_ISSUE_INFO'),
     JIRA_ISSUE_KEY: getJiraIssueKey(),
     JIRA_TYPE_TRANSITION: getJiraTypeTransition()

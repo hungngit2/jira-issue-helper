@@ -1,9 +1,9 @@
 # Jira Issue Transition and Environment Info Action
 
-This GitHub Action fetches Jira ticket release information and updates the environment table in the ticket. It can also transition Jira issues to a specific status based on the issue type.
+This GitHub Action fetches Jira ticket release information and outputs the environment table as structured JSON. It can also transition Jira issues to a specific status based on the issue type.
 
 ## Features
-- Fetch Jira issue information, including dynamic environment table columns.
+- Fetch Jira issue information, including all environment table columns dynamically.
 - Transition Jira issues to a configured status.
 - Outputs structured environment data for further automation.
 
@@ -28,7 +28,6 @@ The action supports two modes, controlled by the `ACTIONS_MODE` input or environ
 | `JIRA_USER_EMAIL`       | Yes      | Jira user email, e.g. `yourname@your-domain`                                |
 | `JIRA_API_TOKEN`        | Yes      | Jira API token (see [how to get it](https://id.atlassian.com/manage-profile/security/api-tokens)) |
 | `JIRA_ISSUE_KEY`        | Yes      | Jira issue key, e.g. `ABC-1234`                                             |
-| `JIRA_ENV_COLUMNS`      | No       | Comma separated columns for environment table, e.g. `Environment,Branch,Path to Build,Path to Upsert`. Default: `Environment,Branch,Path to Build,Path to Upsert` |
 | `PR_TITLE_PATTERN`      | No       | Regex to extract issue key from PR/issue title. Default: `^(?:\[)?([a-zA-Z0-9]+-[0-9]+)(?:\])?` |
 | `JIRA_ISSUE_TYPE_TRANSITION` | No  | Mapping of issue type to transition, e.g. `Story:Code Review;Bug:Code Review`. Default: `Story:Code Review;Bug:Code Review` |
 | `OUTPUT_KEY`            | No       | Output key for the result. Default: `JIRA_ISSUE_INFO`                        |
@@ -45,17 +44,18 @@ The action supports two modes, controlled by the `ACTIONS_MODE` input or environ
   "status": "In Progress",
   "environments": [
     {
-      "env": "Staging",
-      "branch": "feature/xyz",
-      "buildPaths": ["/path/to/build1", "/path/to/build2"],
-      "upsertPaths": ["/path/to/upsert1"],
-      "otherInformation": ["value1", "value2"] // dynamic columns if present
+      "environment": ["Staging"],
+      "branch": ["feature/xyz"],
+      "pathToBuild": ["/path/to/build1", "/path/to/build2"],
+      "pathToUpsert": ["/path/to/upsert1"],
+      "otherInformation": ["value1", "value2"]
     }
   ]
 }
 ```
 
-- The `environments` array contains objects for each row in the Jira environment table. Standard fields are `env`, `branch`, `buildPaths`, `upsertPaths`. Any additional columns will be included as camelCase keys with array values.
+- The `environments` array contains objects for each row in the Jira environment table. **All columns are included dynamically**: each key is the camelCase version of the column name, and the value is always an array of strings (even if only one value).
+- There are **no special fields** like `env`, `branch`, `buildPaths`, or `upsertPaths` anymore. All columns are treated equally and dynamically.
 
 ## Usage Example
 
@@ -67,7 +67,6 @@ The action supports two modes, controlled by the `ACTIONS_MODE` input or environ
     JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
     JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     JIRA_ISSUE_KEY: ${{ github.event.pull_request.title }}
-    JIRA_ENV_COLUMNS: Environment,Branch,Path to Build,Path to Upsert
     JIRA_ISSUE_TYPE_TRANSITION: "Story:Code Review;Bug:Code Review"
 ```
 
@@ -92,7 +91,7 @@ The action supports two modes, controlled by the `ACTIONS_MODE` input or environ
    ```
 
 ## Notes
-- The action supports dynamic columns in the Jira environment table. Any extra columns will be included in the output as camelCase keys.
+- The action supports **fully dynamic columns** in the Jira environment table. Any column present in the table will be included in the output as a camelCase key with an array of string values.
 - If `JIRA_ISSUE_KEY` is not provided, the action will try to extract it from the PR or issue title using `PR_TITLE_PATTERN`.
 - The action can be used in two modes:
   - **Transition**: Transitions the Jira issue to the configured status.
