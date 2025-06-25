@@ -1,43 +1,154 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 
-const getInput = (envKey: string, fallback = ''): string =>
-  (process.env[envKey] || core.getInput(envKey) || fallback).trim()
+// Constants
+const DEFAULT_PATTERN = '^(?:\\[)?([a-z0-9]+)[\\s-]([0-9]+)(?:\\])?'
+const DEFAULT_TRANSITIONS = 'Story:Code Review;Bug:Code Review'
+const DEFAULT_OUTPUT_KEY = 'JIRA_ISSUE_INFO'
+const URL_PATTERN = /([A-Z0-9]+-\d+)/i
+
+// Types
+interface GitHubEvent {
+  pull_request?: {
+    title?: string
+  }
+  issue?: {
+    title?: string
+  }
+}
+
+interface TransitionConfig {
+  [issueType: string]: string
+}
+
+// Utility functions
+const getInput = (envKey: string, fallback = ''): string => {
+  const value = process.env[envKey] || core.getInput(envKey) || fallback
+  return value.trim()
+}
+
+const normalizeJiraKey = (text: string): string => {
+  if (!text) return ''
+
+  return text
+    .replace(/([a-z0-9]+)[\s-]([0-9]+)/i, '$1-$2')  // ABC 5606, ABC-5606 -> ABC-5606
+    .replace(/([a-z]+)([0-9]+)/i, '$1-$2')          // abc5606, ABC5606 -> abc-5606, ABC-5606
+}
+
+const extractJiraKeyFromText = (text: string, pattern: RegExp): string | null => {
+  if (!text) return null
+
+  const normalizedText = normalizeJiraKey(text)
+
+  // Try URL pattern first
+  const urlMatch = normalizedText.match(URL_PATTERN)
+  if (urlMatch) {
+    return urlMatch[1].toUpperCase()
+  }
+
+  // Try custom pattern
+  const match = normalizedText.match(pattern)
+  if (match) {
+    return `${match[1].toUpperCase()}-${match[2]}`
+  }
+
+  return null
+}
+
+const getGitHubEvent = (): GitHubEvent => {
+  try {
+    const eventInput = core.getInput('event')
+    if (eventInput) {
+      return JSON.parse(eventInput)
+    }
+  } catch (error) {
+    core.warning(`Failed to parse event input: ${error}`)
+  }
+
+  // Fallback to context
+  return {
+    pull_request: {
+      title: github.context.payload.pull_request?.title || github.context.payload.issue?.title || ''
+    }
+  }
+}
 
 const getJiraIssueKey = (): string => {
+  // Check direct input first
   const jiraIssueKey = getInput('JIRA_ISSUE_KEY')
-  if (jiraIssueKey) return jiraIssueKey
+  if (jiraIssueKey) {
+    return normalizeJiraKey(jiraIssueKey).toUpperCase()
+  }
 
-  const pattern = new RegExp(
-    getInput('PR_TITLE_PATTERN', '^(?:\\[)?([a-zA-Z0-9]+-[0-9]+)(?:\\])?')
-  )
-  const title =
-    github.context.payload.pull_request?.title ||
-    github.context.payload.issue?.title ||
-    ''
-  return title.match(pattern)?.[1] || ''
-}
+  // Get pattern for extraction
+  const patternString = getInput('PR_TITLE_PATTERN', DEFAULT_PATTERN)
+  const pattern = new RegExp(patternString, 'i')
 
-const getJiraTypeTransition = (): Record<string, string> => {
-  const transitions = getInput(
-    'JIRA_ISSUE_TYPE_TRANSITION',
-    'Story:Code Review;Bug:Code Review'
-  ).split(';')
-  return transitions.reduce<Record<string, string>>((acc, transition) => {
-    const [issueType, transitionName] = transition.split(':')
-    if (issueType && transitionName) {
-      acc[issueType.trim()] = transitionName.trim()
+  // Try to extract from GitHub event
+  const githubEvent = getGitHubEvent()
+  const title = githubEvent.pull_request?.title || ''
+
+  if (title) {
+    const extractedKey = extractJiraKeyFromText(title, pattern)
+    if (extractedKey) {
+      return extractedKey
     }
-    return acc
-  }, {})
+  }
+
+  // Try pull-open-message as fallback
+  const pullOpenMessage = getInput('pull-open-message')
+  if (pullOpenMessage) {
+    const extractedKey = extractJiraKeyFromText(pullOpenMessage, pattern)
+    if (extractedKey) {
+      return extractedKey
+    }
+  }
+
+  return ''
 }
 
+const parseTransitionConfig = (configString: string): TransitionConfig => {
+  if (!configString) {
+    return {}
+  }
+
+  return configString
+    .split(';')
+    .filter(Boolean)
+    .reduce<TransitionConfig>((acc, transition) => {
+      const [issueType, transitionName] = transition.split(':').map(s => s.trim())
+      if (issueType && transitionName) {
+        acc[issueType] = transitionName
+      } else {
+        core.warning(`Invalid transition config: "${transition}". Expected format: "IssueType:TransitionName"`)
+      }
+      return acc
+    }, {})
+}
+
+const getJiraTypeTransition = (): TransitionConfig => {
+  const transitionsConfig = getInput('JIRA_ISSUE_TYPE_TRANSITION', DEFAULT_TRANSITIONS)
+  return parseTransitionConfig(transitionsConfig)
+}
+
+const determineActionsMode = (): string => {
+  const explicitMode = getInput('ACTIONS_MODE')
+  if (explicitMode) {
+    return explicitMode
+  }
+
+  // Auto-detect based on JIRA_ISSUE_KEY presence
+  const jiraIssueKey = getInput('JIRA_ISSUE_KEY')
+  return jiraIssueKey ? 'IssueInfo' : 'Transition'
+}
+
+// Main Input object
 export const Input = {
-  ACTIONS_MODE: getInput('ACTIONS_MODE') || (getInput('JIRA_ISSUE_KEY') ? 'IssueInfo' : 'Transition'),
+  ACTIONS_MODE: determineActionsMode(),
   JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
   JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
   JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
-  OUTPUT_KEY: getInput('OUTPUT_KEY', 'JIRA_ISSUE_INFO'),
+  OUTPUT_KEY: getInput('OUTPUT_KEY', DEFAULT_OUTPUT_KEY),
   JIRA_ISSUE_KEY: getJiraIssueKey(),
   JIRA_TYPE_TRANSITION: getJiraTypeTransition()
 }
