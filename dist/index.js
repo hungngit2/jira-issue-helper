@@ -54620,7 +54620,7 @@ exports.parseEnvironmentDataFromTable = parseEnvironmentDataFromTable;
 const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const jiraIssue = yield fetch_1.default.get(`/issue/${input_1.Input.JIRA_ISSUE_KEY}`);
-    if (!jiraIssue) {
+    if (!jiraIssue.key) {
         console.log(`Jira issue ${input_1.Input.JIRA_ISSUE_KEY} not found`);
         return;
     }

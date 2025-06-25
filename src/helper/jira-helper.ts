@@ -126,7 +126,7 @@ export const parseEnvironmentDataFromTable = (content: TableContent): Environmen
 export const jiraIssueInfo = async (): Promise<JiraIssueInfo | undefined> => {
   const jiraIssue = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}`) as JiraIssue
 
-  if (!jiraIssue) {
+  if (!jiraIssue.key) {
     console.log(`Jira issue ${Input.JIRA_ISSUE_KEY} not found`)
     return
   }
