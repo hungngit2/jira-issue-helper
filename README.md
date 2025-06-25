@@ -28,7 +28,7 @@ The action supports two modes, controlled by the `ACTIONS_MODE` input or environ
 | `JIRA_USER_EMAIL`       | Yes      | Jira user email, e.g. `yourname@your-domain`                                |
 | `JIRA_API_TOKEN`        | Yes      | Jira API token (see [how to get it](https://id.atlassian.com/manage-profile/security/api-tokens)) |
 | `JIRA_ISSUE_KEY`        | Yes      | Jira issue key, e.g. `ABC-1234`                                             |
-| `PR_TITLE_PATTERN`      | No       | Regex to extract issue key from PR/issue title. Default: `^(?:\[)?([a-zA-Z0-9]+-[0-9]+)(?:\])?` |
+| `JIRA_ISSUE_KEY_PATTERN`      | No       | Regex to extract issue key from PR/issue title. Default: `^(?:\[)?([a-zA-Z0-9]+-[0-9]+)(?:\])?` |
 | `JIRA_ISSUE_TYPE_TRANSITION` | No  | Mapping of issue type to transition, e.g. `Story:Code Review;Bug:Code Review`. Default: `Story:Code Review;Bug:Code Review` |
 | `OUTPUT_KEY`            | No       | Output key for the result. Default: `JIRA_ISSUE_INFO`                        |
 | `ACTIONS_MODE`          | No       | Explicitly set the mode: `Transition` or `IssueInfo`.                       |
@@ -92,7 +92,7 @@ The action supports two modes, controlled by the `ACTIONS_MODE` input or environ
 
 ## Notes
 - The action supports **fully dynamic columns** in the Jira environment table. Any column present in the table will be included in the output as a camelCase key with an array of string values.
-- If `JIRA_ISSUE_KEY` is not provided, the action will try to extract it from the PR or issue title using `PR_TITLE_PATTERN`.
+- If `JIRA_ISSUE_KEY` is not provided, the action will try to extract it from the PR or issue title using `JIRA_ISSUE_KEY_PATTERN`.
 - The action can be used in two modes:
   - **Transition**: Transitions the Jira issue to the configured status.
   - **IssueInfo**: Fetches and outputs the Jira issue info (default if `JIRA_ISSUE_KEY` is set).

@@ -2,10 +2,9 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 
 // Constants
-const DEFAULT_PATTERN = '^(?:\\[)?([a-z0-9]+)[\\s-]([0-9]+)(?:\\])?'
+const DEFAULT_JIRA_ISSUE_KEY_PATTERN = '([A-Z0-9]+)[\\s-]?(\\d+)'
 const DEFAULT_TRANSITIONS = 'Story:Code Review;Bug:Code Review'
 const DEFAULT_OUTPUT_KEY = 'JIRA_ISSUE_INFO'
-const URL_PATTERN = /([A-Z0-9]+-\d+)/i
 
 // Types
 interface GitHubEvent {
@@ -39,15 +38,8 @@ const extractJiraKeyFromText = (text: string, pattern: RegExp): string | null =>
   if (!text) return null
 
   const normalizedText = normalizeJiraKey(text)
-
-  // Try URL pattern first
-  const urlMatch = normalizedText.match(URL_PATTERN)
-  if (urlMatch) {
-    return urlMatch[1].toUpperCase()
-  }
-
-  // Try custom pattern
   const match = normalizedText.match(pattern)
+
   if (match) {
     return `${match[1].toUpperCase()}-${match[2]}`
   }
@@ -81,7 +73,7 @@ const getJiraIssueKey = (): string => {
   }
 
   // Get pattern for extraction
-  const patternString = getInput('PR_TITLE_PATTERN', DEFAULT_PATTERN)
+  const patternString = getInput('JIRA_ISSUE_KEY_PATTERN', DEFAULT_JIRA_ISSUE_KEY_PATTERN)
   const pattern = new RegExp(patternString, 'i')
 
   // Try to extract from GitHub event
