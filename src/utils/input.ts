@@ -65,35 +65,44 @@ const getGitHubEvent = (): GitHubEvent => {
   }
 }
 
-const getJiraIssueKey = (): string => {
-  // Check direct input first
-  const jiraIssueKey = getInput('JIRA_ISSUE_KEY')
-  if (jiraIssueKey) {
-    return normalizeJiraKey(jiraIssueKey).toUpperCase()
-  }
+const tryExtractJiraKey = (text: string, pattern: RegExp): string | null => {
+  if (!text) return null
 
+  const extractedKey = extractJiraKeyFromText(text, pattern)
+  return extractedKey || null
+}
+
+const getJiraIssueKey = (): string => {
   // Get pattern for extraction
   const patternString = getInput('JIRA_ISSUE_KEY_PATTERN', DEFAULT_JIRA_ISSUE_KEY_PATTERN)
   const pattern = new RegExp(patternString, 'i')
+
+  // Check direct input first
+  const jiraIssueKey = getInput('JIRA_ISSUE_KEY')
+  if (jiraIssueKey) {
+    const extractedKey = tryExtractJiraKey(jiraIssueKey, pattern)
+    if (extractedKey) {
+      return extractedKey
+    }
+
+    // Fallback: return normalized key if pattern doesn't match
+    return normalizeJiraKey(jiraIssueKey).toUpperCase()
+  }
 
   // Try to extract from GitHub event
   const githubEvent = getGitHubEvent()
   const title = githubEvent.pull_request?.title || ''
 
-  if (title) {
-    const extractedKey = extractJiraKeyFromText(title, pattern)
-    if (extractedKey) {
-      return extractedKey
-    }
+  const titleKey = tryExtractJiraKey(title, pattern)
+  if (titleKey) {
+    return titleKey
   }
 
   // Try pull-open-message as fallback
   const pullOpenMessage = getInput('pull-open-message')
-  if (pullOpenMessage) {
-    const extractedKey = extractJiraKeyFromText(pullOpenMessage, pattern)
-    if (extractedKey) {
-      return extractedKey
-    }
+  const messageKey = tryExtractJiraKey(pullOpenMessage, pattern)
+  if (messageKey) {
+    return messageKey
   }
 
   return ''
