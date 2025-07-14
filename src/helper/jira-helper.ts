@@ -135,7 +135,6 @@ export const jiraIssueInfo = async (): Promise<JiraIssueInfo | undefined> => {
 
   if (environmentContents.length === 0) {
     console.log(`No environment information found for issue ${Input.JIRA_ISSUE_KEY}`)
-    return
   }
 
   const releaseEnvironments = environmentContents

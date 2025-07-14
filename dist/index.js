@@ -54627,7 +54627,6 @@ const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     const environmentContents = ((_a = jiraIssue.fields.environment) === null || _a === void 0 ? void 0 : _a.content) || [];
     if (environmentContents.length === 0) {
         console.log(`No environment information found for issue ${input_1.Input.JIRA_ISSUE_KEY}`);
-        return;
     }
     const releaseEnvironments = environmentContents
         .map(exports.parseEnvironmentDataFromTable)
