@@ -39,6 +39,7 @@ interface Paragraph {
   text?: string
   content?: Array<{
     text?: string
+    type?: string
   }>
 }
 
@@ -89,9 +90,19 @@ const extractTextFromParagraphs = (paragraphs: Paragraph[] = []): string[] => {
       if (p.text) {
         acc.push(p.text)
       } else if (p.content) {
-        const joinedText = p.content.map(node => node.text || '').join('')
+        const joinedText = p.content.map(node => {
+          if (node.text) {
+            return node.text
+          } else if ((node as any).type === 'hardBreak') {
+            return '\n'
+          }
+          return ''
+        }).join('')
+
         if (joinedText) {
-          acc.push(joinedText)
+          // Split by newlines to handle hard breaks properly
+          const lines = joinedText.split('\n')
+          acc.push(...lines)
         }
       }
       return acc
