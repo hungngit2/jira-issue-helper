@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import { Input } from './utils/input'
 import { Fetch } from './utils/fetch'
-import { jiraIssueTransition, jiraIssueInfo } from './helper/jira-helper'
+import { jiraIssueTransition, jiraIssueInfo, addJiraComment } from './helper/jira-helper'
 
 const initFetch = () => {
   Fetch.authorization = `Basic ${Buffer.from(`${Input.JIRA_USER_EMAIL}:${Input.JIRA_API_TOKEN}`).toString('base64')}`
@@ -31,6 +31,15 @@ const initFetch = () => {
     console.log(`Issue`, issueInfo)
 
     // Export the release environments
-    core.setOutput(Input.OUTPUT_KEY, JSON.stringify(issueInfo));
+    core.setOutput(Input.OUTPUT_KEY, JSON.stringify(issueInfo))
+  }
+
+  if (Input.ACTIONS_MODE === 'NewComment') {
+    const comment = Input.JIRA_COMMENT_BODY
+    if (!comment) {
+      console.log('No comment provided for NewComment action.')
+      return;
+    }
+    await addJiraComment(Input.JIRA_ISSUE_KEY, comment)
   }
 })();

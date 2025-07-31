@@ -133,7 +133,7 @@ const getJiraTypeTransition = (): TransitionConfig => {
 }
 
 const determineActionsMode = (): string => {
-  const explicitMode = getInput('ACTIONS_MODE')
+  const explicitMode = getInput('ACTIONS_MODE') // NewComment
   if (explicitMode) {
     return explicitMode
   }
@@ -151,5 +151,6 @@ export const Input = {
   JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
   OUTPUT_KEY: getInput('OUTPUT_KEY', DEFAULT_OUTPUT_KEY),
   JIRA_ISSUE_KEY: getJiraIssueKey(),
-  JIRA_TYPE_TRANSITION: getJiraTypeTransition()
+  JIRA_TYPE_TRANSITION: getJiraTypeTransition(),
+  JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY')
 }

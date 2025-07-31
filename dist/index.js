@@ -54550,7 +54550,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.jiraIssueInfo = exports.parseEnvironmentDataFromTable = exports.jiraIssueTransition = void 0;
+exports.createBulletList = exports.createCodeBlock = exports.createParagraph = exports.createJiraCommentStructure = exports.addFormattedCommentToCurrentIssue = exports.addCommentToCurrentIssue = exports.addJiraCommentWithFormatting = exports.addJiraComment = exports.jiraIssueInfo = exports.parseEnvironmentDataFromTable = exports.jiraIssueTransition = void 0;
 const input_1 = __nccwpck_require__(5073);
 const fetch_1 = __nccwpck_require__(7393);
 const lodash_1 = __nccwpck_require__(463);
@@ -54651,6 +54651,190 @@ const jiraIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     };
 });
 exports.jiraIssueInfo = jiraIssueInfo;
+const addJiraComment = (issueKey, comment) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        let commentBody;
+        // Check if comment is a JSON string
+        try {
+            const parsedComment = JSON.parse(comment);
+            // If it's valid JSON and has the expected structure, use it as the body
+            if (parsedComment && typeof parsedComment === 'object') {
+                commentBody = { body: parsedComment };
+            }
+            else {
+                throw new Error('Not a valid comment structure');
+            }
+        }
+        catch (parseError) {
+            // If it's not valid JSON or doesn't have the right structure, treat as plain text
+            commentBody = {
+                body: {
+                    type: 'doc',
+                    version: 1,
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: comment
+                                }
+                            ]
+                        }
+                    ]
+                }
+            };
+        }
+        const response = yield fetch_1.default.post(`/issue/${issueKey}/comment`, { body: commentBody });
+        if (response && !response.error) {
+            console.log(`Comment added successfully to Jira issue ${issueKey}`);
+        }
+        else {
+            console.log(`Failed to add comment to Jira issue ${issueKey}:`, (response === null || response === void 0 ? void 0 : response.error) || 'Unknown error');
+        }
+    }
+    catch (error) {
+        console.log(`Error adding comment to Jira issue ${issueKey}:`, error);
+    }
+});
+exports.addJiraComment = addJiraComment;
+const addJiraCommentWithFormatting = (issueKey, comment, formatting) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const content = [];
+        // Split comment by lines for paragraph structure
+        const lines = comment.split('\n').filter(line => line.trim());
+        lines.forEach(line => {
+            const paragraphContent = [];
+            // Handle mentions
+            let processedText = line;
+            if ((formatting === null || formatting === void 0 ? void 0 : formatting.mentions) && formatting.mentions.length > 0) {
+                formatting.mentions.forEach(mention => {
+                    const mentionPattern = new RegExp(`@${mention}`, 'g');
+                    if (processedText.includes(`@${mention}`)) {
+                        // For simplicity, we'll add the mention as plain text
+                        // In a full implementation, you'd need the user's account ID
+                        processedText = processedText.replace(mentionPattern, `@${mention}`);
+                    }
+                });
+            }
+            // Handle links
+            if ((formatting === null || formatting === void 0 ? void 0 : formatting.links) && formatting.links.length > 0) {
+                formatting.links.forEach(link => {
+                    if (processedText.includes(link.text)) {
+                        processedText = processedText.replace(link.text, link.text // We'll add link structure below
+                        );
+                    }
+                });
+            }
+            // Create text node with formatting
+            const textNode = {
+                type: 'text',
+                text: processedText
+            };
+            // Apply formatting marks
+            const marks = [];
+            if (formatting === null || formatting === void 0 ? void 0 : formatting.bold)
+                marks.push({ type: 'strong' });
+            if (formatting === null || formatting === void 0 ? void 0 : formatting.italic)
+                marks.push({ type: 'em' });
+            if (formatting === null || formatting === void 0 ? void 0 : formatting.code)
+                marks.push({ type: 'code' });
+            if (marks.length > 0) {
+                textNode.marks = marks;
+            }
+            paragraphContent.push(textNode);
+            content.push({
+                type: 'paragraph',
+                content: paragraphContent
+            });
+        });
+        const commentBody = {
+            body: {
+                type: 'doc',
+                version: 1,
+                content: content
+            }
+        };
+        const response = yield fetch_1.default.post(`/issue/${issueKey}/comment`, { body: commentBody });
+        if (response && !response.error) {
+            console.log(`Formatted comment added successfully to Jira issue ${issueKey}`);
+            return true;
+        }
+        else {
+            console.error(`Failed to add formatted comment to Jira issue ${issueKey}:`, (response === null || response === void 0 ? void 0 : response.error) || 'Unknown error');
+            return false;
+        }
+    }
+    catch (error) {
+        console.error(`Error adding formatted comment to Jira issue ${issueKey}:`, error);
+        return false;
+    }
+});
+exports.addJiraCommentWithFormatting = addJiraCommentWithFormatting;
+const addCommentToCurrentIssue = (comment) => __awaiter(void 0, void 0, void 0, function* () {
+    return (0, exports.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, comment);
+});
+exports.addCommentToCurrentIssue = addCommentToCurrentIssue;
+const addFormattedCommentToCurrentIssue = (comment, formatting) => __awaiter(void 0, void 0, void 0, function* () {
+    return (0, exports.addJiraCommentWithFormatting)(input_1.Input.JIRA_ISSUE_KEY, comment, formatting);
+});
+exports.addFormattedCommentToCurrentIssue = addFormattedCommentToCurrentIssue;
+const createJiraCommentStructure = (content) => {
+    const commentStructure = {
+        type: 'doc',
+        version: 1,
+        content: content
+    };
+    return JSON.stringify(commentStructure);
+};
+exports.createJiraCommentStructure = createJiraCommentStructure;
+const createParagraph = (text, marks) => {
+    const textNode = {
+        type: 'text',
+        text: text
+    };
+    if (marks && marks.length > 0) {
+        textNode.marks = marks;
+    }
+    return {
+        type: 'paragraph',
+        content: [textNode]
+    };
+};
+exports.createParagraph = createParagraph;
+const createCodeBlock = (code, language) => {
+    return {
+        type: 'codeBlock',
+        attrs: language ? { language } : {},
+        content: [
+            {
+                type: 'text',
+                text: code
+            }
+        ]
+    };
+};
+exports.createCodeBlock = createCodeBlock;
+const createBulletList = (items) => {
+    return {
+        type: 'bulletList',
+        content: items.map(item => ({
+            type: 'listItem',
+            content: [
+                {
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'text',
+                            text: item
+                        }
+                    ]
+                }
+            ]
+        }))
+    };
+};
+exports.createBulletList = createBulletList;
 
 
 /***/ }),
@@ -54697,6 +54881,14 @@ const initFetch = () => {
         console.log(`Issue`, issueInfo);
         // Export the release environments
         core.setOutput(input_1.Input.OUTPUT_KEY, JSON.stringify(issueInfo));
+    }
+    if (input_1.Input.ACTIONS_MODE === 'NewComment') {
+        const comment = input_1.Input.JIRA_COMMENT_BODY;
+        if (!comment) {
+            console.log('No comment provided for NewComment action.');
+            return;
+        }
+        yield (0, jira_helper_1.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, comment);
     }
 }))();
 
@@ -54912,7 +55104,7 @@ const getJiraTypeTransition = () => {
     return parseTransitionConfig(transitionsConfig);
 };
 const determineActionsMode = () => {
-    const explicitMode = getInput('ACTIONS_MODE');
+    const explicitMode = getInput('ACTIONS_MODE'); // NewComment
     if (explicitMode) {
         return explicitMode;
     }
@@ -54928,7 +55120,8 @@ exports.Input = {
     JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
     OUTPUT_KEY: getInput('OUTPUT_KEY', DEFAULT_OUTPUT_KEY),
     JIRA_ISSUE_KEY: getJiraIssueKey(),
-    JIRA_TYPE_TRANSITION: getJiraTypeTransition()
+    JIRA_TYPE_TRANSITION: getJiraTypeTransition(),
+    JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY')
 };
 
 

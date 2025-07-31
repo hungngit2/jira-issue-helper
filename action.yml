@@ -22,6 +22,12 @@ inputs:
   JIRA_ISSUE_TYPE_TRANSITION:
     description: 'Default: "Story:Code Review;Bug:Code Revieww"'
     required: false
+  JIRA_COMMENT_BODY:
+    description: 'Comment body to add to the Jira issue'
+    required: false
+  ACTIONS_MODE:
+    description: 'Mode of action to perform: "NewComment", "Transition", or "IssueInfo"'
+    required: false
 runs:
   using: node20
   main: 'dist/index.js'
