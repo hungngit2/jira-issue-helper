@@ -107,7 +107,19 @@ const extractTextFromParagraphs = (paragraphs: Paragraph[] = []): string[] => {
       }
       return acc
     }, [])
-    .map((text: string) => text.trim())
+    .map((text: string) => {
+      // Remove special characters including invisible characters
+      return text
+        .trim()
+        // Remove zero-width characters
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        // Remove left-to-right mark and right-to-left mark
+        .replace(/[\u200E\u200F]/g, '')
+        // Remove other common invisible/control characters
+        .replace(/[\u00AD\u061C\u2060\u2061\u2062\u2063\u2064\u2065\u2066\u2067\u2068\u2069]/g, '')
+        // Remove any remaining control characters (optional - be careful with this)
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+    })
     .filter(Boolean)
 }
 
