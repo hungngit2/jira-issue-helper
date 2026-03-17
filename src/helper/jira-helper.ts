@@ -136,13 +136,25 @@ export const parseEnvironmentDataFromTable = (content: TableContent): Environmen
   const headerKeys = headerTexts.map(text => camelCase(text))
 
   const dataRows = rows.slice(1)
-  return dataRows.map((row: TableRow) => {
+  const parsedRows = dataRows.map((row: TableRow) => {
     const cells = row.content || []
     const rowData: Record<string, string[]> = {}
     headerKeys.forEach((key, idx) => {
       rowData[key] = extractTextFromParagraphs(cells[idx]?.content)
     })
     return rowData
+  })
+
+  return parsedRows.flatMap((row: EnvironmentData) => {
+    const envValues = row.environment || []
+    const splitEnvs = envValues
+      .flatMap((v: string) => v.split(/[,;]/))
+      .map((v: string) => v.trim())
+      .filter(Boolean)
+
+    if (splitEnvs.length <= 1) return [row]
+
+    return splitEnvs.map((env: string) => ({ ...row, environment: [env] }))
   })
 }
 

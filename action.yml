@@ -29,5 +29,5 @@ inputs:
     description: 'Mode of action to perform: "NewComment", "Transition", or "IssueInfo"'
     required: false
 runs:
-  using: node20
+  using: node24
   main: 'dist/index.js'
