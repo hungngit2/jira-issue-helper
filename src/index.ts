@@ -1,11 +1,11 @@
 import * as core from '@actions/core'
 import { Input } from './utils/input'
-import { Fetch } from './utils/fetch'
+import { FetchHelper } from './helper/fetch-helper'
 import { jiraIssueTransition, jiraIssueInfo, addJiraComment } from './helper/jira-helper'
 
 const initFetch = () => {
-  Fetch.authorization = `Basic ${Buffer.from(`${Input.JIRA_USER_EMAIL}:${Input.JIRA_API_TOKEN}`).toString('base64')}`
-  Fetch.apiServer = `${Input.JIRA_BASE_URL}/rest/api/3`
+  FetchHelper.authorization = `Basic ${Buffer.from(`${Input.JIRA_USER_EMAIL}:${Input.JIRA_API_TOKEN}`).toString('base64')}`
+  FetchHelper.apiServer = `${Input.JIRA_BASE_URL}/rest/api/3`
 }
 
 (async () => {

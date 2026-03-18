@@ -1,5 +1,5 @@
 import { Input } from '../utils/input'
-import fetch from '../utils/fetch'
+import fetchHelper from './fetch-helper'
 import { camelCase } from 'lodash'
 
 interface JiraIssue {
@@ -58,7 +58,7 @@ interface TableContent {
 }
 
 export const jiraIssueTransition = async () => {
-    const jiraIssue = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}`) as JiraIssue
+    const jiraIssue = await fetchHelper.get(`/issue/${Input.JIRA_ISSUE_KEY}`) as JiraIssue
     if (!jiraIssue) {
         console.log(`Jira issue ${Input.JIRA_ISSUE_KEY} not found`)
         return
@@ -70,7 +70,7 @@ export const jiraIssueTransition = async () => {
         console.log(`No transition configured for issue type "${issueType}"`)
         return
     }
-    const issueTtransitions = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`) as { transitions: JiraIssueTransition[] }
+    const issueTtransitions = await fetchHelper.get(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`) as { transitions: JiraIssueTransition[] }
 
     const transition = issueTtransitions.transitions.find((t: any) => t.name.toLowerCase() === transitionName.toLowerCase())
 
@@ -80,7 +80,7 @@ export const jiraIssueTransition = async () => {
         return
     }
 
-    await fetch.post(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id }}})
+    await fetchHelper.post(`/issue/${Input.JIRA_ISSUE_KEY}/transitions`, { body: { transition: { id: transition.id }}})
     console.log(`Jira issue ${Input.JIRA_ISSUE_KEY} has been transitioned to "${transition.name}"`)
 }
 
@@ -159,7 +159,7 @@ export const parseEnvironmentDataFromTable = (content: TableContent): Environmen
 }
 
 export const jiraIssueInfo = async (): Promise<JiraIssueInfo | undefined> => {
-  const jiraIssue = await fetch.get(`/issue/${Input.JIRA_ISSUE_KEY}`) as JiraIssue
+  const jiraIssue = await fetchHelper.get(`/issue/${Input.JIRA_ISSUE_KEY}`) as JiraIssue
 
   if (!jiraIssue.key) {
     console.log(`Jira issue ${Input.JIRA_ISSUE_KEY} not found`)
@@ -220,7 +220,7 @@ export const addJiraComment = async (issueKey: string, comment: string): Promise
       }
     }
 
-    const response = await fetch.post(`/issue/${issueKey}/comment`, { body: commentBody })
+    const response = await fetchHelper.post(`/issue/${issueKey}/comment`, { body: commentBody })
 
     if (response && !response.error) {
       console.log(`Comment added successfully to Jira issue ${issueKey}`)
@@ -309,7 +309,7 @@ export const addJiraCommentWithFormatting = async (
       }
     }
 
-    const response = await fetch.post(`/issue/${issueKey}/comment`, { body: commentBody })
+    const response = await fetchHelper.post(`/issue/${issueKey}/comment`, { body: commentBody })
 
     if (response && !response.error) {
       console.log(`Formatted comment added successfully to Jira issue ${issueKey}`)

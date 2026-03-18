@@ -1,4 +1,3 @@
-import fetch from 'node-fetch'
 
 export type ResponseType = "json" | "text" | "buffer" | "stream";
 export type RequestParams = {
@@ -8,7 +7,7 @@ export type RequestParams = {
   headers?: object
 }
 
-export class Fetch {
+export class FetchHelper {
   public static authorization: string
   public static apiServer: string
 
@@ -32,10 +31,10 @@ export class Fetch {
     const options = this.getRequestOptions(method, params)
     const responseType = params?.responseType ?? 'json'
 
-    console.log(`***${method}: ${Fetch.apiServer}${urlPath}`)
+    console.log(`***${method}: ${FetchHelper.apiServer}${urlPath}`)
 
     try {
-      const res = await fetch(Fetch.apiServer + urlPath, options)
+      const res = await fetch(FetchHelper.apiServer + urlPath, options)
       if (!res.ok) {
         const errorText = await res.text()
         console.error(`Request failed! Status: ${res.status}`, errorText)
@@ -68,7 +67,7 @@ export class Fetch {
       method,
       headers: {
         ...headers,
-        Authorization: Fetch.authorization
+        Authorization: FetchHelper.authorization
       }
     }
 
@@ -84,4 +83,5 @@ export class Fetch {
   }
 }
 
-export default new Fetch()
+export const fetchHelper = new FetchHelper()
+export default fetchHelper
