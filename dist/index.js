@@ -50231,6 +50231,195 @@ exports.createBulletList = createBulletList;
 
 /***/ }),
 
+/***/ 8377:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.linearIssueTransition = exports.addLinearComment = exports.linearIssueInfo = exports.parseMarkdownTableRows = void 0;
+const input_1 = __nccwpck_require__(5073);
+const lodash_1 = __nccwpck_require__(250);
+const LINEAR_API_URL = 'https://api.linear.app/graphql';
+const linearGraphql = (query, variables = {}) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    console.log(`***POST: ${LINEAR_API_URL}`);
+    const res = yield fetch(LINEAR_API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': input_1.Input.LINEAR_API_TOKEN,
+        },
+        body: JSON.stringify({ query, variables })
+    });
+    if (!res.ok) {
+        const text = yield res.text();
+        throw new Error(`Linear API error: ${res.status} ${text}`);
+    }
+    const json = yield res.json();
+    if ((_a = json.errors) === null || _a === void 0 ? void 0 : _a.length) {
+        throw new Error(`Linear GraphQL errors: ${JSON.stringify(json.errors)}`);
+    }
+    return json.data;
+});
+const parseTableRow = (line) => line.split('|').slice(1, -1).map(cell => cell.trim());
+const parseMarkdownTableRows = (markdown) => {
+    if (!markdown)
+        return [];
+    const tableRegex = /^(\|.+\|\s*\n\|[-| :]+\|\s*\n(?:\|.+\|\s*\n?)+)/gm;
+    const tables = markdown.match(tableRegex) || [];
+    return tables.flatMap(table => {
+        const lines = table.trim().split('\n').filter(line => line.trim().startsWith('|'));
+        if (lines.length < 3)
+            return [];
+        if (!/^\|[-| :]+\|$/.test(lines[1].trim()))
+            return [];
+        const headers = parseTableRow(lines[0]).map(h => (0, lodash_1.camelCase)(h));
+        const dataRows = lines.slice(2).map(line => {
+            const cells = parseTableRow(line);
+            const row = {};
+            headers.forEach((key, idx) => {
+                const val = (cells[idx] || '').trim();
+                row[key] = val ? [val] : [];
+            });
+            return row;
+        });
+        return dataRows.flatMap(row => {
+            const envValues = row.environment || [];
+            const splitEnvs = envValues
+                .flatMap(v => v.split(/[,;]/))
+                .map(v => v.trim())
+                .filter(Boolean);
+            if (splitEnvs.length <= 1)
+                return [row];
+            return splitEnvs.map(env => (Object.assign(Object.assign({}, row), { environment: [env] })));
+        });
+    });
+};
+exports.parseMarkdownTableRows = parseMarkdownTableRows;
+const linearIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
+    var _b, _c;
+    const issueKey = input_1.Input.LINEAR_ISSUE_KEY;
+    if (!issueKey)
+        return undefined;
+    let data;
+    try {
+        data = yield linearGraphql(`
+      query Issue($id: String!) {
+        issue(id: $id) {
+          id identifier title url
+          state { name }
+          documents { nodes { id title content } }
+        }
+      }
+    `, { id: issueKey });
+    }
+    catch (err) {
+        console.log(`Linear issue ${issueKey} lookup failed:`, err);
+        return undefined;
+    }
+    const issue = data === null || data === void 0 ? void 0 : data.issue;
+    if (!(issue === null || issue === void 0 ? void 0 : issue.id)) {
+        console.log(`Linear issue ${issueKey} not found`);
+        return undefined;
+    }
+    const releaseDocs = (((_b = issue.documents) === null || _b === void 0 ? void 0 : _b.nodes) || [])
+        .filter(doc => { var _a; return (_a = doc.title) === null || _a === void 0 ? void 0 : _a.startsWith('Release'); });
+    if (releaseDocs.length === 0) {
+        console.log(`No Release documents found for Linear issue ${issueKey}`);
+    }
+    const environments = releaseDocs.flatMap(doc => (0, exports.parseMarkdownTableRows)(doc.content));
+    return {
+        key: issue.identifier,
+        url: issue.url,
+        summary: issue.title,
+        status: (_c = issue.state) === null || _c === void 0 ? void 0 : _c.name,
+        environments,
+    };
+});
+exports.linearIssueInfo = linearIssueInfo;
+const addLinearComment = (issueIdentifier, body) => __awaiter(void 0, void 0, void 0, function* () {
+    var _d, _e;
+    try {
+        // Resolve identifier to UUID first
+        const issueData = yield linearGraphql(`
+      query Issue($id: String!) { issue(id: $id) { id } }
+    `, { id: issueIdentifier });
+        const issueId = (_d = issueData === null || issueData === void 0 ? void 0 : issueData.issue) === null || _d === void 0 ? void 0 : _d.id;
+        if (!issueId) {
+            console.log(`Linear issue ${issueIdentifier} not found`);
+            return;
+        }
+        const result = yield linearGraphql(`
+      mutation AddComment($issueId: String!, $body: String!) {
+        commentCreate(input: { issueId: $issueId, body: $body }) {
+          success
+        }
+      }
+    `, { issueId, body });
+        if ((_e = result === null || result === void 0 ? void 0 : result.commentCreate) === null || _e === void 0 ? void 0 : _e.success) {
+            console.log(`Comment added to Linear issue ${issueIdentifier}`);
+        }
+        else {
+            console.log(`Failed to add comment to Linear issue ${issueIdentifier}`);
+        }
+    }
+    catch (err) {
+        console.log(`Error adding comment to Linear issue ${issueIdentifier}:`, err);
+    }
+});
+exports.addLinearComment = addLinearComment;
+const linearIssueTransition = () => __awaiter(void 0, void 0, void 0, function* () {
+    var _f, _g, _h, _j;
+    const issueKey = input_1.Input.LINEAR_ISSUE_KEY;
+    if (!issueKey)
+        return;
+    const issueData = yield linearGraphql(`
+    query Issue($id: String!) { issue(id: $id) { id state { name } } }
+  `, { id: issueKey });
+    const issue = issueData === null || issueData === void 0 ? void 0 : issueData.issue;
+    if (!(issue === null || issue === void 0 ? void 0 : issue.id)) {
+        console.log(`Linear issue ${issueKey} not found`);
+        return;
+    }
+    const transitionName = input_1.Input.JIRA_TYPE_TRANSITION[(_f = issue.state) === null || _f === void 0 ? void 0 : _f.name];
+    if (!transitionName) {
+        console.log(`No transition configured for Linear state "${(_g = issue.state) === null || _g === void 0 ? void 0 : _g.name}"`);
+        return;
+    }
+    const statesData = yield linearGraphql(`
+    query States($name: String!) {
+      workflowStates(filter: { name: { eq: $name } }) {
+        nodes { id name }
+      }
+    }
+  `, { name: transitionName });
+    const targetState = (_j = (_h = statesData === null || statesData === void 0 ? void 0 : statesData.workflowStates) === null || _h === void 0 ? void 0 : _h.nodes) === null || _j === void 0 ? void 0 : _j[0];
+    if (!targetState) {
+        console.log(`Linear workflow state "${transitionName}" not found`);
+        return;
+    }
+    yield linearGraphql(`
+    mutation Transition($id: String!, $stateId: String!) {
+      issueUpdate(id: $id, input: { stateId: $stateId }) { success }
+    }
+  `, { id: issue.id, stateId: targetState.id });
+    console.log(`Linear issue ${issueKey} transitioned to "${targetState.name}"`);
+});
+exports.linearIssueTransition = linearIssueTransition;
+
+
+/***/ }),
+
 /***/ 6144:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -50250,36 +50439,73 @@ const core = __nccwpck_require__(2186);
 const input_1 = __nccwpck_require__(5073);
 const fetch_helper_1 = __nccwpck_require__(9902);
 const jira_helper_1 = __nccwpck_require__(8024);
-const initFetch = () => {
+const linear_helper_1 = __nccwpck_require__(8377);
+const initJiraFetch = () => {
     fetch_helper_1.FetchHelper.authorization = `Basic ${Buffer.from(`${input_1.Input.JIRA_USER_EMAIL}:${input_1.Input.JIRA_API_TOKEN}`).toString('base64')}`;
     fetch_helper_1.FetchHelper.apiServer = `${input_1.Input.JIRA_BASE_URL}/rest/api/3`;
 };
+const hasLinearConfig = () => !!input_1.Input.LINEAR_API_TOKEN && !!input_1.Input.LINEAR_ISSUE_KEY;
+const hasJiraConfig = () => !!input_1.Input.JIRA_BASE_URL && !!input_1.Input.JIRA_USER_EMAIL && !!input_1.Input.JIRA_API_TOKEN && !!input_1.Input.JIRA_ISSUE_KEY;
 (() => __awaiter(void 0, void 0, void 0, function* () {
     console.log('ACTIONS_MODE:', input_1.Input.ACTIONS_MODE);
     console.log('JIRA_BASE_URL:', input_1.Input.JIRA_BASE_URL);
     console.log('JIRA_USER_EMAIL:', input_1.Input.JIRA_USER_EMAIL);
     console.log('JIRA_ISSUE_KEY:', input_1.Input.JIRA_ISSUE_KEY);
     console.log('JIRA_TYPE_TRANSITION:', input_1.Input.JIRA_TYPE_TRANSITION);
-    if (!input_1.Input.JIRA_BASE_URL || !input_1.Input.JIRA_USER_EMAIL || !input_1.Input.JIRA_API_TOKEN || !input_1.Input.JIRA_ISSUE_KEY) {
-        console.log('No JIRA configuration provided. Exiting.');
+    console.log('LINEAR_ISSUE_KEY:', input_1.Input.LINEAR_ISSUE_KEY);
+    if (!hasLinearConfig() && !hasJiraConfig()) {
+        console.log('No issue tracker configuration provided. Exiting.');
         return;
     }
-    initFetch();
     if (input_1.Input.ACTIONS_MODE === 'Transition') {
+        if (hasLinearConfig()) {
+            yield (0, linear_helper_1.linearIssueTransition)();
+            return;
+        }
+        initJiraFetch();
         yield (0, jira_helper_1.jiraIssueTransition)();
+        return;
     }
     if (input_1.Input.ACTIONS_MODE === 'IssueInfo') {
+        if (hasLinearConfig()) {
+            const issueInfo = yield (0, linear_helper_1.linearIssueInfo)();
+            if (issueInfo) {
+                console.log('Issue', issueInfo);
+                core.setOutput(input_1.Input.OUTPUT_KEY, JSON.stringify(issueInfo));
+                return;
+            }
+            console.log('Linear lookup returned nothing, falling back to Jira');
+        }
+        if (!hasJiraConfig()) {
+            console.log('No Jira configuration for fallback. Exiting.');
+            return;
+        }
+        initJiraFetch();
         const issueInfo = yield (0, jira_helper_1.jiraIssueInfo)();
-        console.log(`Issue`, issueInfo);
-        // Export the release environments
+        console.log('Issue', issueInfo);
         core.setOutput(input_1.Input.OUTPUT_KEY, JSON.stringify(issueInfo));
+        return;
     }
     if (input_1.Input.ACTIONS_MODE === 'NewComment') {
+        if (hasLinearConfig()) {
+            const comment = input_1.Input.LINEAR_COMMENT_BODY || input_1.Input.JIRA_COMMENT_BODY;
+            if (!comment) {
+                console.log('No comment provided for NewComment action.');
+                return;
+            }
+            yield (0, linear_helper_1.addLinearComment)(input_1.Input.LINEAR_ISSUE_KEY, comment);
+            return;
+        }
+        if (!hasJiraConfig()) {
+            console.log('No Jira configuration for fallback. Exiting.');
+            return;
+        }
         const comment = input_1.Input.JIRA_COMMENT_BODY;
         if (!comment) {
             console.log('No comment provided for NewComment action.');
             return;
         }
+        initJiraFetch();
         yield (0, jira_helper_1.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, comment);
     }
 }))();
@@ -50408,15 +50634,19 @@ const determineActionsMode = () => {
     return jiraIssueKey ? 'IssueInfo' : 'Transition';
 };
 // Main Input object
+const jiraIssueKey = getJiraIssueKey();
 exports.Input = {
     ACTIONS_MODE: determineActionsMode(),
     JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
     JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
     JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
     OUTPUT_KEY: getInput('OUTPUT_KEY', DEFAULT_OUTPUT_KEY),
-    JIRA_ISSUE_KEY: getJiraIssueKey(),
+    JIRA_ISSUE_KEY: jiraIssueKey,
     JIRA_TYPE_TRANSITION: getJiraTypeTransition(),
-    JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY')
+    JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY'),
+    LINEAR_API_TOKEN: getInput('LINEAR_API_TOKEN'),
+    LINEAR_ISSUE_KEY: getInput('LINEAR_ISSUE_KEY') || jiraIssueKey,
+    LINEAR_COMMENT_BODY: getInput('LINEAR_COMMENT_BODY'),
 };
 
 

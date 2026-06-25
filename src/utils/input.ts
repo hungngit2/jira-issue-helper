@@ -144,13 +144,17 @@ const determineActionsMode = (): string => {
 }
 
 // Main Input object
+const jiraIssueKey = getJiraIssueKey()
 export const Input = {
   ACTIONS_MODE: determineActionsMode(),
   JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
   JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
   JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
   OUTPUT_KEY: getInput('OUTPUT_KEY', DEFAULT_OUTPUT_KEY),
-  JIRA_ISSUE_KEY: getJiraIssueKey(),
+  JIRA_ISSUE_KEY: jiraIssueKey,
   JIRA_TYPE_TRANSITION: getJiraTypeTransition(),
-  JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY')
+  JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY'),
+  LINEAR_API_TOKEN: getInput('LINEAR_API_TOKEN'),
+  LINEAR_ISSUE_KEY: getInput('LINEAR_ISSUE_KEY') || jiraIssueKey,
+  LINEAR_COMMENT_BODY: getInput('LINEAR_COMMENT_BODY'),
 }
