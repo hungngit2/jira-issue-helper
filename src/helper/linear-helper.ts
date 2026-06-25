@@ -57,7 +57,8 @@ const parseTableRow = (line: string): string[] =>
 export const parseMarkdownTableRows = (markdown: string): EnvironmentData[] => {
   if (!markdown) return []
 
-  const tableRegex = /^(\|.+\|\s*\n\|[-| :]+\|\s*\n(?:\|.+\|\s*\n?)+)/gm
+  // Use [ \t]* not \s* to avoid matching across blank lines between tables
+  const tableRegex = /^(\|.+\|[ \t]*\n\|[-| :]+\|[ \t]*\n(?:\|.+\|[ \t]*\n?)+)/gm
   const tables = markdown.match(tableRegex) || []
 
   return tables.flatMap(table => {
@@ -134,7 +135,7 @@ export const linearIssueInfo = async (): Promise<LinearIssueInfo | undefined> =>
   }
 }
 
-export const addLinearComment = async (issueIdentifier: string, body: string): Promise<void> => {
+export const addLinearComment = async (issueIdentifier: string, body: string): Promise<boolean> => {
   try {
     // Resolve identifier to UUID first
     const issueData = await linearGraphql<{ issue: { id: string } }>(`
@@ -144,7 +145,7 @@ export const addLinearComment = async (issueIdentifier: string, body: string): P
     const issueId = issueData?.issue?.id
     if (!issueId) {
       console.log(`Linear issue ${issueIdentifier} not found`)
-      return
+      return false
     }
 
     const result = await linearGraphql<{ commentCreate: { success: boolean } }>(`
@@ -157,17 +158,19 @@ export const addLinearComment = async (issueIdentifier: string, body: string): P
 
     if (result?.commentCreate?.success) {
       console.log(`Comment added to Linear issue ${issueIdentifier}`)
-    } else {
-      console.log(`Failed to add comment to Linear issue ${issueIdentifier}`)
+      return true
     }
+    console.log(`Failed to add comment to Linear issue ${issueIdentifier}`)
+    return false
   } catch (err) {
     console.log(`Error adding comment to Linear issue ${issueIdentifier}:`, err)
+    return false
   }
 }
 
-export const linearIssueTransition = async (): Promise<void> => {
+export const linearIssueTransition = async (): Promise<boolean> => {
   const issueKey = Input.LINEAR_ISSUE_KEY
-  if (!issueKey) return
+  if (!issueKey) return false
 
   const issueData = await linearGraphql<{ issue: { id: string; state: { name: string } } }>(`
     query Issue($id: String!) { issue(id: $id) { id state { name } } }
@@ -176,13 +179,13 @@ export const linearIssueTransition = async (): Promise<void> => {
   const issue = issueData?.issue
   if (!issue?.id) {
     console.log(`Linear issue ${issueKey} not found`)
-    return
+    return false
   }
 
   const transitionName = Input.JIRA_TYPE_TRANSITION[issue.state?.name]
   if (!transitionName) {
     console.log(`No transition configured for Linear state "${issue.state?.name}"`)
-    return
+    return false
   }
 
   const statesData = await linearGraphql<{ workflowStates: { nodes: Array<{ id: string; name: string }> } }>(`
@@ -196,7 +199,7 @@ export const linearIssueTransition = async (): Promise<void> => {
   const targetState = statesData?.workflowStates?.nodes?.[0]
   if (!targetState) {
     console.log(`Linear workflow state "${transitionName}" not found`)
-    return
+    return false
   }
 
   await linearGraphql(`
@@ -206,4 +209,5 @@ export const linearIssueTransition = async (): Promise<void> => {
   `, { id: issue.id, stateId: targetState.id })
 
   console.log(`Linear issue ${issueKey} transitioned to "${targetState.name}"`)
+  return true
 }

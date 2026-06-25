@@ -1,6 +1,5 @@
 import { parseMarkdownTableRows, linearIssueInfo, addLinearComment, linearIssueTransition } from '../helper/linear-helper'
 
-// Mock Input so the module loads without @actions/core env requirements
 jest.mock('../utils/input', () => ({
   Input: {
     LINEAR_API_TOKEN: 'test-token',
@@ -13,16 +12,14 @@ jest.mock('../utils/input', () => ({
 const mockFetch = jest.fn()
 global.fetch = mockFetch
 
-const makeFetchResponse = (data: object) => ({
+const ok = (data: object) => ({
   ok: true,
   status: 200,
   json: () => Promise.resolve(data),
   text: () => Promise.resolve(''),
 })
 
-beforeEach(() => {
-  mockFetch.mockReset()
-})
+beforeEach(() => mockFetch.mockReset())
 
 // ---------------------------------------------------------------------------
 // parseMarkdownTableRows
@@ -57,9 +54,9 @@ describe('parseMarkdownTableRows', () => {
 
   it('splits semicolon-separated environment values into separate rows', () => {
     const md = `
-| Environment       | Branch |
-|-------------------|--------|
-| prod; staging     | main   |
+| Environment   | Branch |
+|---------------|--------|
+| prod; staging | main   |
 `
     const result = parseMarkdownTableRows(md)
     expect(result).toHaveLength(2)
@@ -80,20 +77,15 @@ describe('parseMarkdownTableRows', () => {
 
   it('parses multiple tables from a single document', () => {
     const md = `
-Some text before.
-
 | Environment | Branch |
 |-------------|--------|
 | production  | main   |
-
-Some text between.
 
 | Service | Version |
 |---------|---------|
 | api     | 1.2.3   |
 `
-    const result = parseMarkdownTableRows(md)
-    expect(result).toHaveLength(2)
+    expect(parseMarkdownTableRows(md)).toHaveLength(2)
   })
 
   it('returns empty array for empty string', () => {
@@ -101,10 +93,10 @@ Some text between.
   })
 
   it('returns empty array when no tables present', () => {
-    expect(parseMarkdownTableRows('Just some plain text\nwith no tables.')).toEqual([])
+    expect(parseMarkdownTableRows('Just some plain text.')).toEqual([])
   })
 
-  it('ignores a table with only header and separator (no data rows)', () => {
+  it('ignores table with only header and separator', () => {
     const md = `
 | Environment | Branch |
 |-------------|--------|
@@ -118,8 +110,7 @@ Some text between.
 |-------------|--------|
 | production  |        |
 `
-    const result = parseMarkdownTableRows(md)
-    expect(result[0].branch).toEqual([])
+    expect(parseMarkdownTableRows(md)[0].branch).toEqual([])
   })
 })
 
@@ -153,7 +144,7 @@ describe('linearIssueInfo', () => {
   }
 
   it('returns issue info with environments from Release documents', async () => {
-    mockFetch.mockResolvedValueOnce(makeFetchResponse(issueResponse))
+    mockFetch.mockResolvedValueOnce(ok(issueResponse))
 
     const result = await linearIssueInfo()
 
@@ -180,10 +171,9 @@ describe('linearIssueInfo', () => {
         }
       }
     }
-    mockFetch.mockResolvedValueOnce(makeFetchResponse(response))
+    mockFetch.mockResolvedValueOnce(ok(response))
 
     const result = await linearIssueInfo()
-    // Only the Release doc tables should be parsed (2 rows), not the Notes doc
     expect(result!.environments).toHaveLength(2)
   })
 
@@ -192,32 +182,27 @@ describe('linearIssueInfo', () => {
       data: {
         issue: {
           ...issueResponse.data.issue,
-          documents: { nodes: [{ id: 'doc-3', title: 'Meeting Notes', content: 'some content' }] }
+          documents: { nodes: [{ id: 'doc-3', title: 'Meeting Notes', content: 'content' }] }
         }
       }
     }
-    mockFetch.mockResolvedValueOnce(makeFetchResponse(response))
+    mockFetch.mockResolvedValueOnce(ok(response))
 
-    const result = await linearIssueInfo()
-    expect(result!.environments).toHaveLength(0)
+    expect((await linearIssueInfo())!.environments).toHaveLength(0)
   })
 
   it('returns undefined when issue is not found', async () => {
-    mockFetch.mockResolvedValueOnce(makeFetchResponse({ data: { issue: null } }))
-
-    const result = await linearIssueInfo()
-    expect(result).toBeUndefined()
+    mockFetch.mockResolvedValueOnce(ok({ data: { issue: null } }))
+    expect(await linearIssueInfo()).toBeUndefined()
   })
 
   it('returns undefined on fetch error', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'))
-
-    const result = await linearIssueInfo()
-    expect(result).toBeUndefined()
+    expect(await linearIssueInfo()).toBeUndefined()
   })
 
   it('sends the Authorization header with the API token', async () => {
-    mockFetch.mockResolvedValueOnce(makeFetchResponse(issueResponse))
+    mockFetch.mockResolvedValueOnce(ok(issueResponse))
 
     await linearIssueInfo()
 
@@ -231,24 +216,37 @@ describe('linearIssueInfo', () => {
 // ---------------------------------------------------------------------------
 
 describe('addLinearComment', () => {
-  it('resolves UUID then creates comment', async () => {
+  it('resolves UUID then creates comment, returns true on success', async () => {
     mockFetch
-      .mockResolvedValueOnce(makeFetchResponse({ data: { issue: { id: 'uuid-eng-123' } } }))
-      .mockResolvedValueOnce(makeFetchResponse({ data: { commentCreate: { success: true } } }))
+      .mockResolvedValueOnce(ok({ data: { issue: { id: 'uuid-eng-123' } } }))
+      .mockResolvedValueOnce(ok({ data: { commentCreate: { success: true } } }))
 
-    await addLinearComment('ENG-123', 'hello from tests')
+    const result = await addLinearComment('ENG-123', 'hello from tests')
 
+    expect(result).toBe(true)
     expect(mockFetch).toHaveBeenCalledTimes(2)
     const commentBody = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect(commentBody.variables).toMatchObject({ issueId: 'uuid-eng-123', body: 'hello from tests' })
   })
 
-  it('does nothing when issue UUID cannot be resolved', async () => {
-    mockFetch.mockResolvedValueOnce(makeFetchResponse({ data: { issue: null } }))
+  it('returns false when issue UUID cannot be resolved', async () => {
+    mockFetch.mockResolvedValueOnce(ok({ data: { issue: null } }))
 
-    await addLinearComment('ENG-999', 'hello')
-
+    expect(await addLinearComment('ENG-999', 'hello')).toBe(false)
     expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns false when commentCreate fails', async () => {
+    mockFetch
+      .mockResolvedValueOnce(ok({ data: { issue: { id: 'uuid-eng-123' } } }))
+      .mockResolvedValueOnce(ok({ data: { commentCreate: { success: false } } }))
+
+    expect(await addLinearComment('ENG-123', 'hello')).toBe(false)
+  })
+
+  it('returns false on network error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('timeout'))
+    expect(await addLinearComment('ENG-123', 'hello')).toBe(false)
   })
 })
 
@@ -257,37 +255,40 @@ describe('addLinearComment', () => {
 // ---------------------------------------------------------------------------
 
 describe('linearIssueTransition', () => {
-  it('transitions the issue to the mapped state', async () => {
+  it('transitions the issue to the mapped state, returns true', async () => {
     mockFetch
-      .mockResolvedValueOnce(makeFetchResponse({ data: { issue: { id: 'uuid-eng-123', state: { name: 'In Progress' } } } }))
-      .mockResolvedValueOnce(makeFetchResponse({ data: { workflowStates: { nodes: [{ id: 'state-456', name: 'Code Review' }] } } }))
-      .mockResolvedValueOnce(makeFetchResponse({ data: { issueUpdate: { success: true } } }))
+      .mockResolvedValueOnce(ok({ data: { issue: { id: 'uuid-eng-123', state: { name: 'In Progress' } } } }))
+      .mockResolvedValueOnce(ok({ data: { workflowStates: { nodes: [{ id: 'state-456', name: 'Code Review' }] } } }))
+      .mockResolvedValueOnce(ok({ data: { issueUpdate: { success: true } } }))
 
-    await linearIssueTransition()
+    const result = await linearIssueTransition()
 
+    expect(result).toBe(true)
     expect(mockFetch).toHaveBeenCalledTimes(3)
     const updateBody = JSON.parse(mockFetch.mock.calls[2][1].body)
     expect(updateBody.variables).toMatchObject({ id: 'uuid-eng-123', stateId: 'state-456' })
   })
 
-  it('does nothing when no transition is configured for the current state', async () => {
-    mockFetch.mockResolvedValueOnce(makeFetchResponse({
+  it('returns false when no transition is configured for the current state', async () => {
+    mockFetch.mockResolvedValueOnce(ok({
       data: { issue: { id: 'uuid-eng-123', state: { name: 'Done' } } }
     }))
 
-    await linearIssueTransition()
-
-    // Only one fetch (to get current state) — no state lookup or update
+    expect(await linearIssueTransition()).toBe(false)
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('does nothing when target workflow state is not found in Linear', async () => {
+  it('returns false when target workflow state is not found', async () => {
     mockFetch
-      .mockResolvedValueOnce(makeFetchResponse({ data: { issue: { id: 'uuid-eng-123', state: { name: 'In Progress' } } } }))
-      .mockResolvedValueOnce(makeFetchResponse({ data: { workflowStates: { nodes: [] } } }))
+      .mockResolvedValueOnce(ok({ data: { issue: { id: 'uuid-eng-123', state: { name: 'In Progress' } } } }))
+      .mockResolvedValueOnce(ok({ data: { workflowStates: { nodes: [] } } }))
 
-    await linearIssueTransition()
-
+    expect(await linearIssueTransition()).toBe(false)
     expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns false when issue is not found', async () => {
+    mockFetch.mockResolvedValueOnce(ok({ data: { issue: null } }))
+    expect(await linearIssueTransition()).toBe(false)
   })
 })

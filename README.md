@@ -1,101 +1,185 @@
-# Jira Issue Transition and Environment Info Action
+# Issue Tracker Helper Action
 
-This GitHub Action fetches Jira ticket release information and outputs the environment table as structured JSON. It can also transition Jira issues to a specific status based on the issue type.
+GitHub Action that fetches issue information and environment data from **Linear** or **Jira**, and can transition issues or post comments. When both are configured, Linear is tried first and Jira is used as a fallback.
 
 ## Features
-- Fetch Jira issue information, including all environment table columns dynamically.
-- Transition Jira issues to a configured status.
-- Outputs structured environment data for further automation.
 
-## ACTIONS_MODE
+- Fetch issue info and parse environment tables from Linear (Release documents) or Jira (environment field)
+- Transition issue status / workflow state
+- Post comments
+- Automatic Linear → Jira fallback when a Linear lookup returns nothing
+- Explicit tracker selection via `ISSUE_TRACKER`
 
-The action supports two modes, controlled by the `ACTIONS_MODE` input or environment variable:
+---
 
-| Mode         | Description                                                                                 |
-|--------------|---------------------------------------------------------------------------------------------|
-| `Transition` | Transitions the Jira issue to the configured status based on its type.                      |
-| `IssueInfo`  | Fetches Jira issue information and outputs the environment table as structured JSON.         |
+## Tracker selection (`ISSUE_TRACKER`)
 
-- If `ACTIONS_MODE` is not set explicitly, the action will auto-detect:
-  - If `JIRA_ISSUE_KEY` is provided, it defaults to `IssueInfo` mode.
-  - Otherwise, it defaults to `Transition` mode.
-- You can override this by setting the `ACTIONS_MODE` input to either `Transition` or `IssueInfo`.
+| Value | Behaviour |
+|-------|-----------|
+| _(not set)_ | Auto-detect: uses Linear if `LINEAR_API_TOKEN` is set, otherwise Jira |
+| `linear` | Try Linear; fall back to Jira if Linear returns nothing |
+| `jira` | Jira only, even if `LINEAR_API_TOKEN` is present |
+
+---
+
+## Modes (`ACTIONS_MODE`)
+
+| Mode | Description |
+|------|-------------|
+| `IssueInfo` | Fetch issue + parse environment table → output JSON |
+| `Transition` | Transition the issue to a configured workflow state |
+| `NewComment` | Post a comment to the issue |
+
+Auto-detection (when `ACTIONS_MODE` is not set):
+- `IssueInfo` if `JIRA_ISSUE_KEY` or `LINEAR_ISSUE_KEY` is provided
+- `Transition` otherwise
+
+---
 
 ## Inputs
-| Name                    | Required | Description                                                                 |
-|-------------------------|----------|-----------------------------------------------------------------------------|
-| `JIRA_BASE_URL`         | Yes      | Jira base URL, e.g. `https://your-domain.atlassian.net`                     |
-| `JIRA_USER_EMAIL`       | Yes      | Jira user email, e.g. `yourname@your-domain`                                |
-| `JIRA_API_TOKEN`        | Yes      | Jira API token (see [how to get it](https://id.atlassian.com/manage-profile/security/api-tokens)) |
-| `JIRA_ISSUE_KEY`        | Yes      | Jira issue key, e.g. `ABC-1234`                                             |
-| `JIRA_ISSUE_KEY_PATTERN`      | No       | Regex to extract issue key from PR/issue title. Default: `^(?:\[)?([a-zA-Z0-9]+-[0-9]+)(?:\])?` |
-| `JIRA_ISSUE_TYPE_TRANSITION` | No  | Mapping of issue type to transition, e.g. `Story:Code Review;Bug:Code Review`. Default: `Story:Code Review;Bug:Code Review` |
-| `OUTPUT_KEY`            | No       | Output key for the result. Default: `JIRA_ISSUE_INFO`                        |
-| `ACTIONS_MODE`          | No       | Explicitly set the mode: `Transition` or `IssueInfo`.                       |
 
-## Outputs
-- The action sets an output (default: `JIRA_ISSUE_INFO`) containing the Jira issue info as JSON. Example structure:
+### Shared
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `ISSUE_TRACKER` | No | `linear` or `jira`. Omit for auto-detect. |
+| `ACTIONS_MODE` | No | `IssueInfo`, `Transition`, or `NewComment`. |
+| `OUTPUT_KEY` | No | Output key name. Default: `JIRA_ISSUE_INFO` |
+
+### Linear
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `LINEAR_API_TOKEN` | Yes (for Linear) | Linear API token |
+| `LINEAR_ISSUE_KEY` | No | Issue identifier, e.g. `ENG-123`. Defaults to `JIRA_ISSUE_KEY` if not set. |
+| `LINEAR_COMMENT_BODY` | No | Comment body for `NewComment` mode. Falls back to `JIRA_COMMENT_BODY`. |
+
+### Jira
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `JIRA_BASE_URL` | Yes (for Jira) | e.g. `https://your-domain.atlassian.net` |
+| `JIRA_USER_EMAIL` | Yes (for Jira) | Jira user email |
+| `JIRA_API_TOKEN` | Yes (for Jira) | Jira API token ([get one here](https://id.atlassian.com/manage-profile/security/api-tokens)) |
+| `JIRA_ISSUE_KEY` | Yes (for Jira) | Issue key, e.g. `ABC-1234`. Also used as `LINEAR_ISSUE_KEY` when the latter is not set. |
+| `JIRA_ISSUE_KEY_PATTERN` | No | Regex to extract issue key from PR title. Default: `([A-Z0-9]+)[\s-]?(\d+)` |
+| `JIRA_ISSUE_TYPE_TRANSITION` | No | Transition map, e.g. `Story:Code Review;Bug:Code Review` |
+| `JIRA_COMMENT_BODY` | No | Comment body for `NewComment` mode |
+
+---
+
+## Output
+
+The action sets an output (default key: `JIRA_ISSUE_INFO`) with the issue info as JSON:
 
 ```json
 {
-  "key": "ABC-1234",
-  "url": "https://your-domain.atlassian.net/browse/ABC-1234",
-  "summary": "Issue summary",
+  "key": "ENG-123",
+  "url": "https://linear.app/team/issue/ENG-123",
+  "summary": "Deploy to production",
   "status": "In Progress",
   "environments": [
     {
-      "environment": ["Staging"],
+      "environment": ["staging"],
       "branch": ["feature/xyz"],
-      "pathToBuild": ["/path/to/build1", "/path/to/build2"],
-      "pathToUpsert": ["/path/to/upsert1"],
-      "otherInformation": ["value1", "value2"]
+      "buildPath": ["build/stg"],
+      "pathToUpsert": ["upsert/stg"]
     }
   ]
 }
 ```
 
-- The `environments` array contains objects for each row in the Jira environment table. **All columns are included dynamically**: each key is the camelCase version of the column name, and the value is always an array of strings (even if only one value).
-- There are **no special fields** like `env`, `branch`, `buildPaths`, or `upsertPaths` anymore. All columns are treated equally and dynamically.
+All column names are camelCased dynamically from the table headers. Values are always arrays. Multi-value cells (comma- or semicolon-separated) are split into separate rows.
 
-## Usage Example
+### Linear: environment data source
+
+Environment data is read from issue **documents whose title starts with `Release`**. Create a document via the "Add Document" button on the Linear issue and name it e.g. `Release 1.2.3`. The document should contain a Markdown table:
+
+```markdown
+| Environment | Branch      | Build Path  |
+|-------------|-------------|-------------|
+| production  | main        | build/prod  |
+| staging     | dev         | build/stg   |
+```
+
+### Jira: environment data source
+
+Environment data is read from the **Environment** field on the Jira issue (ADF table format).
+
+---
+
+## Usage examples
+
+### Linear only
 
 ```yaml
-- name: Jira Issue Info
-  uses: your-org/jira-issue-transition@v1
+- name: Get Linear issue info
+  uses: your-org/jira-issue-helper@v1.5
   with:
+    ISSUE_TRACKER: linear
+    LINEAR_API_TOKEN: ${{ secrets.LINEAR_API_TOKEN }}
+    LINEAR_ISSUE_KEY: ${{ github.event.pull_request.title }}
+    ACTIONS_MODE: IssueInfo
+```
+
+### Jira only
+
+```yaml
+- name: Get Jira issue info
+  uses: your-org/jira-issue-helper@v1.5
+  with:
+    ISSUE_TRACKER: jira
     JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
     JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
     JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     JIRA_ISSUE_KEY: ${{ github.event.pull_request.title }}
-    JIRA_ISSUE_TYPE_TRANSITION: "Story:Code Review;Bug:Code Review"
+    ACTIONS_MODE: IssueInfo
 ```
 
-## Local Development
+### Linear with Jira fallback (auto-detect)
 
-1. Clone the repository:
-   ```sh
-   git clone <repo-url>
-   cd jira-issue-transition
-   ```
-2. Install dependencies:
-   ```sh
-   npm install
-   ```
-3. Build the project:
-   ```sh
-   npm run build
-   ```
-4. Run locally (requires `.env` file or environment variables):
-   ```sh
-   npm start
-   ```
+```yaml
+- name: Get issue info
+  uses: your-org/jira-issue-helper@v1.5
+  with:
+    LINEAR_API_TOKEN: ${{ secrets.LINEAR_API_TOKEN }}
+    JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+    JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+    JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+    JIRA_ISSUE_KEY: ${{ github.event.pull_request.title }}
+    ACTIONS_MODE: IssueInfo
+```
 
-## Notes
-- The action supports **fully dynamic columns** in the Jira environment table. Any column present in the table will be included in the output as a camelCase key with an array of string values.
-- If `JIRA_ISSUE_KEY` is not provided, the action will try to extract it from the PR or issue title using `JIRA_ISSUE_KEY_PATTERN`.
-- The action can be used in two modes:
-  - **Transition**: Transitions the Jira issue to the configured status.
-  - **IssueInfo**: Fetches and outputs the Jira issue info (default if `JIRA_ISSUE_KEY` is set).
+### Transition + comment
+
+```yaml
+- name: Transition issue
+  uses: your-org/jira-issue-helper@v1.5
+  with:
+    LINEAR_API_TOKEN: ${{ secrets.LINEAR_API_TOKEN }}
+    JIRA_ISSUE_KEY: ${{ github.event.pull_request.title }}
+    JIRA_ISSUE_TYPE_TRANSITION: "Story:Code Review;Bug:Code Review"
+    ACTIONS_MODE: Transition
+
+- name: Post comment
+  uses: your-org/jira-issue-helper@v1.5
+  with:
+    LINEAR_API_TOKEN: ${{ secrets.LINEAR_API_TOKEN }}
+    JIRA_ISSUE_KEY: ${{ github.event.pull_request.title }}
+    JIRA_COMMENT_BODY: "Deployed to staging ✓"
+    ACTIONS_MODE: NewComment
+```
+
+---
+
+## Local development
+
+```sh
+npm install
+npm run build   # bundles to dist/index.js
+npm test        # runs Jest tests
+npm start       # requires .env file
+```
 
 ## License
 MIT

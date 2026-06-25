@@ -50275,7 +50275,8 @@ const parseTableRow = (line) => line.split('|').slice(1, -1).map(cell => cell.tr
 const parseMarkdownTableRows = (markdown) => {
     if (!markdown)
         return [];
-    const tableRegex = /^(\|.+\|\s*\n\|[-| :]+\|\s*\n(?:\|.+\|\s*\n?)+)/gm;
+    // Use [ \t]* not \s* to avoid matching across blank lines between tables
+    const tableRegex = /^(\|.+\|[ \t]*\n\|[-| :]+\|[ \t]*\n(?:\|.+\|[ \t]*\n?)+)/gm;
     const tables = markdown.match(tableRegex) || [];
     return tables.flatMap(table => {
         const lines = table.trim().split('\n').filter(line => line.trim().startsWith('|'));
@@ -50357,7 +50358,7 @@ const addLinearComment = (issueIdentifier, body) => __awaiter(void 0, void 0, vo
         const issueId = (_d = issueData === null || issueData === void 0 ? void 0 : issueData.issue) === null || _d === void 0 ? void 0 : _d.id;
         if (!issueId) {
             console.log(`Linear issue ${issueIdentifier} not found`);
-            return;
+            return false;
         }
         const result = yield linearGraphql(`
       mutation AddComment($issueId: String!, $body: String!) {
@@ -50368,13 +50369,14 @@ const addLinearComment = (issueIdentifier, body) => __awaiter(void 0, void 0, vo
     `, { issueId, body });
         if ((_e = result === null || result === void 0 ? void 0 : result.commentCreate) === null || _e === void 0 ? void 0 : _e.success) {
             console.log(`Comment added to Linear issue ${issueIdentifier}`);
+            return true;
         }
-        else {
-            console.log(`Failed to add comment to Linear issue ${issueIdentifier}`);
-        }
+        console.log(`Failed to add comment to Linear issue ${issueIdentifier}`);
+        return false;
     }
     catch (err) {
         console.log(`Error adding comment to Linear issue ${issueIdentifier}:`, err);
+        return false;
     }
 });
 exports.addLinearComment = addLinearComment;
@@ -50382,19 +50384,19 @@ const linearIssueTransition = () => __awaiter(void 0, void 0, void 0, function* 
     var _f, _g, _h, _j;
     const issueKey = input_1.Input.LINEAR_ISSUE_KEY;
     if (!issueKey)
-        return;
+        return false;
     const issueData = yield linearGraphql(`
     query Issue($id: String!) { issue(id: $id) { id state { name } } }
   `, { id: issueKey });
     const issue = issueData === null || issueData === void 0 ? void 0 : issueData.issue;
     if (!(issue === null || issue === void 0 ? void 0 : issue.id)) {
         console.log(`Linear issue ${issueKey} not found`);
-        return;
+        return false;
     }
     const transitionName = input_1.Input.JIRA_TYPE_TRANSITION[(_f = issue.state) === null || _f === void 0 ? void 0 : _f.name];
     if (!transitionName) {
         console.log(`No transition configured for Linear state "${(_g = issue.state) === null || _g === void 0 ? void 0 : _g.name}"`);
-        return;
+        return false;
     }
     const statesData = yield linearGraphql(`
     query States($name: String!) {
@@ -50406,7 +50408,7 @@ const linearIssueTransition = () => __awaiter(void 0, void 0, void 0, function* 
     const targetState = (_j = (_h = statesData === null || statesData === void 0 ? void 0 : statesData.workflowStates) === null || _h === void 0 ? void 0 : _h.nodes) === null || _j === void 0 ? void 0 : _j[0];
     if (!targetState) {
         console.log(`Linear workflow state "${transitionName}" not found`);
-        return;
+        return false;
     }
     yield linearGraphql(`
     mutation Transition($id: String!, $stateId: String!) {
@@ -50414,6 +50416,7 @@ const linearIssueTransition = () => __awaiter(void 0, void 0, void 0, function* 
     }
   `, { id: issue.id, stateId: targetState.id });
     console.log(`Linear issue ${issueKey} transitioned to "${targetState.name}"`);
+    return true;
 });
 exports.linearIssueTransition = linearIssueTransition;
 
@@ -50446,28 +50449,36 @@ const initJiraFetch = () => {
 };
 const hasLinearConfig = () => !!input_1.Input.LINEAR_API_TOKEN && !!input_1.Input.LINEAR_ISSUE_KEY;
 const hasJiraConfig = () => !!input_1.Input.JIRA_BASE_URL && !!input_1.Input.JIRA_USER_EMAIL && !!input_1.Input.JIRA_API_TOKEN && !!input_1.Input.JIRA_ISSUE_KEY;
+// ISSUE_TRACKER='linear'|'jira'|'' (auto)
+// tryLinear: skip only when explicitly set to 'jira', otherwise use if configured
+// tryJira:   skip only when explicitly set to 'linear' AND linear succeeded; always available as fallback
+const tracker = () => (input_1.Input.ISSUE_TRACKER || '').toLowerCase();
+const tryLinear = () => tracker() !== 'jira' && hasLinearConfig();
+const tryJira = () => tracker() !== 'linear' || hasJiraConfig();
 (() => __awaiter(void 0, void 0, void 0, function* () {
     console.log('ACTIONS_MODE:', input_1.Input.ACTIONS_MODE);
-    console.log('JIRA_BASE_URL:', input_1.Input.JIRA_BASE_URL);
-    console.log('JIRA_USER_EMAIL:', input_1.Input.JIRA_USER_EMAIL);
+    console.log('ISSUE_TRACKER:', input_1.Input.ISSUE_TRACKER || '(auto)');
     console.log('JIRA_ISSUE_KEY:', input_1.Input.JIRA_ISSUE_KEY);
-    console.log('JIRA_TYPE_TRANSITION:', input_1.Input.JIRA_TYPE_TRANSITION);
     console.log('LINEAR_ISSUE_KEY:', input_1.Input.LINEAR_ISSUE_KEY);
-    if (!hasLinearConfig() && !hasJiraConfig()) {
+    if (!tryLinear() && !tryJira()) {
         console.log('No issue tracker configuration provided. Exiting.');
         return;
     }
     if (input_1.Input.ACTIONS_MODE === 'Transition') {
-        if (hasLinearConfig()) {
-            yield (0, linear_helper_1.linearIssueTransition)();
-            return;
+        if (tryLinear()) {
+            const done = yield (0, linear_helper_1.linearIssueTransition)();
+            if (done)
+                return;
+            console.log('Linear transition skipped, falling back to Jira');
         }
-        initJiraFetch();
-        yield (0, jira_helper_1.jiraIssueTransition)();
+        if (tryJira() && hasJiraConfig()) {
+            initJiraFetch();
+            yield (0, jira_helper_1.jiraIssueTransition)();
+        }
         return;
     }
     if (input_1.Input.ACTIONS_MODE === 'IssueInfo') {
-        if (hasLinearConfig()) {
+        if (tryLinear()) {
             const issueInfo = yield (0, linear_helper_1.linearIssueInfo)();
             if (issueInfo) {
                 console.log('Issue', issueInfo);
@@ -50476,37 +50487,30 @@ const hasJiraConfig = () => !!input_1.Input.JIRA_BASE_URL && !!input_1.Input.JIR
             }
             console.log('Linear lookup returned nothing, falling back to Jira');
         }
-        if (!hasJiraConfig()) {
-            console.log('No Jira configuration for fallback. Exiting.');
-            return;
+        if (tryJira() && hasJiraConfig()) {
+            initJiraFetch();
+            const issueInfo = yield (0, jira_helper_1.jiraIssueInfo)();
+            console.log('Issue', issueInfo);
+            core.setOutput(input_1.Input.OUTPUT_KEY, JSON.stringify(issueInfo));
         }
-        initJiraFetch();
-        const issueInfo = yield (0, jira_helper_1.jiraIssueInfo)();
-        console.log('Issue', issueInfo);
-        core.setOutput(input_1.Input.OUTPUT_KEY, JSON.stringify(issueInfo));
         return;
     }
     if (input_1.Input.ACTIONS_MODE === 'NewComment') {
-        if (hasLinearConfig()) {
-            const comment = input_1.Input.LINEAR_COMMENT_BODY || input_1.Input.JIRA_COMMENT_BODY;
-            if (!comment) {
-                console.log('No comment provided for NewComment action.');
-                return;
-            }
-            yield (0, linear_helper_1.addLinearComment)(input_1.Input.LINEAR_ISSUE_KEY, comment);
-            return;
-        }
-        if (!hasJiraConfig()) {
-            console.log('No Jira configuration for fallback. Exiting.');
-            return;
-        }
-        const comment = input_1.Input.JIRA_COMMENT_BODY;
+        const comment = input_1.Input.LINEAR_COMMENT_BODY || input_1.Input.JIRA_COMMENT_BODY;
         if (!comment) {
             console.log('No comment provided for NewComment action.');
             return;
         }
-        initJiraFetch();
-        yield (0, jira_helper_1.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, comment);
+        if (tryLinear()) {
+            const done = yield (0, linear_helper_1.addLinearComment)(input_1.Input.LINEAR_ISSUE_KEY, comment);
+            if (done)
+                return;
+            console.log('Linear comment failed, falling back to Jira');
+        }
+        if (tryJira() && hasJiraConfig()) {
+            initJiraFetch();
+            yield (0, jira_helper_1.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, comment);
+        }
     }
 }))();
 
@@ -50647,6 +50651,8 @@ exports.Input = {
     LINEAR_API_TOKEN: getInput('LINEAR_API_TOKEN'),
     LINEAR_ISSUE_KEY: getInput('LINEAR_ISSUE_KEY') || jiraIssueKey,
     LINEAR_COMMENT_BODY: getInput('LINEAR_COMMENT_BODY'),
+    // 'linear' | 'jira' | '' (auto-detect based on token presence)
+    ISSUE_TRACKER: getInput('ISSUE_TRACKER'),
 };
 
 

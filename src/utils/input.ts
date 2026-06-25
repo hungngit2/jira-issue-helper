@@ -157,4 +157,6 @@ export const Input = {
   LINEAR_API_TOKEN: getInput('LINEAR_API_TOKEN'),
   LINEAR_ISSUE_KEY: getInput('LINEAR_ISSUE_KEY') || jiraIssueKey,
   LINEAR_COMMENT_BODY: getInput('LINEAR_COMMENT_BODY'),
+  // 'linear' | 'jira' | '' (auto-detect based on token presence)
+  ISSUE_TRACKER: getInput('ISSUE_TRACKER'),
 }

@@ -34,6 +34,9 @@ inputs:
   LINEAR_COMMENT_BODY:
     description: 'Comment body to add to the Linear issue (falls back to JIRA_COMMENT_BODY if not set)'
     required: false
+  ISSUE_TRACKER:
+    description: 'Explicit tracker selection: "linear" or "jira". Omit to auto-detect (Linear if LINEAR_API_TOKEN is set, else Jira). When Linear is selected but the issue is not found, the action always falls back to Jira.'
+    required: false
   ACTIONS_MODE:
     description: 'Mode of action to perform: "NewComment", "Transition", or "IssueInfo"'
     required: false
