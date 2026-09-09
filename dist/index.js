@@ -50285,24 +50285,23 @@ const parseMarkdownTableRows = (markdown) => {
         if (!/^\|[-| :]+\|$/.test(lines[1].trim()))
             return [];
         const headers = parseTableRow(lines[0]).map(h => (0, lodash_1.camelCase)(h));
+        // Real tickets pack multiple values into a single cell separated by
+        // commas, semicolons, or plain whitespace (e.g. "dev uat", or a
+        // whitespace-joined list of upsert paths) - split on all three.
+        const splitCell = (val) => val.split(/[,;\s]+/).map(v => v.trim()).filter(Boolean);
         const dataRows = lines.slice(2).map(line => {
             const cells = parseTableRow(line);
             const row = {};
             headers.forEach((key, idx) => {
-                const val = (cells[idx] || '').trim();
-                row[key] = val ? [val] : [];
+                row[key] = splitCell((cells[idx] || '').trim());
             });
             return row;
         });
         return dataRows.flatMap(row => {
             const envValues = row.environment || [];
-            const splitEnvs = envValues
-                .flatMap(v => v.split(/[,;]/))
-                .map(v => v.trim())
-                .filter(Boolean);
-            if (splitEnvs.length <= 1)
+            if (envValues.length <= 1)
                 return [row];
-            return splitEnvs.map(env => (Object.assign(Object.assign({}, row), { environment: [env] })));
+            return envValues.map(env => (Object.assign(Object.assign({}, row), { environment: [env] })));
         });
     });
 };
