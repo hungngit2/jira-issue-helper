@@ -68,25 +68,25 @@ export const parseMarkdownTableRows = (markdown: string): EnvironmentData[] => {
     if (!/^\|[-| :]+\|$/.test(lines[1].trim())) return []
 
     const headers = parseTableRow(lines[0]).map(h => camelCase(h))
+    // Real tickets pack multiple values into a single cell separated by
+    // commas, semicolons, or plain whitespace (e.g. "dev uat", or a
+    // whitespace-joined list of upsert paths) - split on all three.
+    const splitCell = (val: string): string[] =>
+      val.split(/[,;\s]+/).map(v => v.trim()).filter(Boolean)
+
     const dataRows = lines.slice(2).map(line => {
       const cells = parseTableRow(line)
       const row: EnvironmentData = {}
       headers.forEach((key, idx) => {
-        const val = (cells[idx] || '').trim()
-        row[key] = val ? [val] : []
+        row[key] = splitCell((cells[idx] || '').trim())
       })
       return row
     })
 
     return dataRows.flatMap(row => {
       const envValues = row.environment || []
-      const splitEnvs = envValues
-        .flatMap(v => v.split(/[,;]/))
-        .map(v => v.trim())
-        .filter(Boolean)
-
-      if (splitEnvs.length <= 1) return [row]
-      return splitEnvs.map(env => ({ ...row, environment: [env] }))
+      if (envValues.length <= 1) return [row]
+      return envValues.map(env => ({ ...row, environment: [env] }))
     })
   })
 }

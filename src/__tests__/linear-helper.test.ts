@@ -64,6 +64,51 @@ describe('parseMarkdownTableRows', () => {
     expect(result[1].environment).toEqual(['staging'])
   })
 
+  it('splits space-separated environment values into separate rows', () => {
+    const md = `
+| Environment | Branch |
+|-------------|--------|
+| dev uat     | main   |
+`
+    const result = parseMarkdownTableRows(md)
+    expect(result).toHaveLength(2)
+    expect(result[0].environment).toEqual(['dev'])
+    expect(result[1].environment).toEqual(['uat'])
+  })
+
+  it('splits space-separated path values into separate array entries', () => {
+    const md = `
+| Environment | Path to Upsert |
+|-------------|-----------------|
+| dev         | src/a src/b src/c |
+`
+    const result = parseMarkdownTableRows(md)
+    expect(result[0].pathToUpsert).toEqual(['src/a', 'src/b', 'src/c'])
+  })
+
+  it('matches real-world SOLE-9436 ticket data (space-separated envs and paths)', () => {
+    const md = `| **Environment** | **Branch** | **Path to Build**  | **Path to Upsert** |
+| --- | --- | --- | --- |
+| dev uat | release/v26-0407-0-UAT |  | src/object-model/custom-fields/locations/Locations-Market.custom-field.json src/horizon-component-bundle/booking-grid src/horizon-component-bundle/cx-wellbe-senior-components src/mobile-extensions/create_follow_up src/functions/wbsm-main src/functions/wbsm-booking-grid  |
+`
+    const result = parseMarkdownTableRows(md)
+    expect(result).toHaveLength(2)
+    expect(result[0]).toEqual({
+      environment: ['dev'],
+      branch: ['release/v26-0407-0-UAT'],
+      pathToBuild: [],
+      pathToUpsert: [
+        'src/object-model/custom-fields/locations/Locations-Market.custom-field.json',
+        'src/horizon-component-bundle/booking-grid',
+        'src/horizon-component-bundle/cx-wellbe-senior-components',
+        'src/mobile-extensions/create_follow_up',
+        'src/functions/wbsm-main',
+        'src/functions/wbsm-booking-grid',
+      ],
+    })
+    expect(result[1].environment).toEqual(['uat'])
+  })
+
   it('camelCases multi-word column headers', () => {
     const md = `
 | Deploy Environment | Path To Build |
