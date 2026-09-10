@@ -166,7 +166,7 @@ describe('parseMarkdownTableRows', () => {
 describe('linearIssueInfo', () => {
   const releaseDoc = {
     id: 'doc-1',
-    title: 'Release 1.2.3',
+    title: 'adhoc-release 1.2.3',
     content: `
 | Environment | Branch | Build Path |
 |-------------|--------|------------|
@@ -188,7 +188,7 @@ describe('linearIssueInfo', () => {
     }
   }
 
-  it('returns issue info with environments from Release documents', async () => {
+  it('returns issue info with environments from adhoc-release documents', async () => {
     mockFetch.mockResolvedValueOnce(ok(issueResponse))
 
     const result = await linearIssueInfo()
@@ -202,7 +202,7 @@ describe('linearIssueInfo', () => {
     expect(result!.environments[1].environment).toEqual(['staging'])
   })
 
-  it('ignores documents not starting with "Release"', async () => {
+  it('ignores documents not starting with "adhoc-release"', async () => {
     const response = {
       data: {
         issue: {
@@ -222,7 +222,24 @@ describe('linearIssueInfo', () => {
     expect(result!.environments).toHaveLength(2)
   })
 
-  it('returns empty environments when no Release documents exist', async () => {
+  it('matches "adhoc-release", "adhoc release", and "AdhocRelease" (hyphen optional, case-insensitive)', async () => {
+    const variants = ['adhoc-release notes', 'adhoc release notes', 'AdhocRelease notes', 'ADHOC-RELEASE']
+    for (const title of variants) {
+      const response = {
+        data: {
+          issue: {
+            ...issueResponse.data.issue,
+            documents: { nodes: [{ ...releaseDoc, title }] }
+          }
+        }
+      }
+      mockFetch.mockResolvedValueOnce(ok(response))
+      const result = await linearIssueInfo()
+      expect(result!.environments).toHaveLength(2)
+    }
+  })
+
+  it('returns empty environments when no adhoc-release documents exist', async () => {
     const response = {
       data: {
         issue: {

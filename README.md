@@ -4,7 +4,7 @@ GitHub Action that fetches issue information and environment data from **Linear*
 
 ## Features
 
-- Fetch issue info and parse environment tables from Linear (Release documents) or Jira (environment field)
+- Fetch issue info and parse environment tables from Linear (adhoc-release documents) or Jira (environment field)
 - Transition issue status / workflow state
 - Post comments
 - Automatic Linear → Jira fallback when a Linear lookup returns nothing

@@ -117,11 +117,12 @@ export const linearIssueInfo = async (): Promise<LinearIssueInfo | undefined> =>
     return undefined
   }
 
+  const ADHOC_RELEASE_DOC_TITLE = /^adhoc[- ]?release/i
   const releaseDocs = (issue.documents?.nodes || [])
-    .filter(doc => doc.title?.startsWith('Release'))
+    .filter(doc => doc.title && ADHOC_RELEASE_DOC_TITLE.test(doc.title))
 
   if (releaseDocs.length === 0) {
-    console.log(`No Release documents found for Linear issue ${issueKey}`)
+    console.log(`No adhoc-release documents found for Linear issue ${issueKey}`)
   }
 
   const environments = releaseDocs.flatMap(doc => parseMarkdownTableRows(doc.content))
