@@ -50332,10 +50332,11 @@ const linearIssueInfo = () => __awaiter(void 0, void 0, void 0, function* () {
         console.log(`Linear issue ${issueKey} not found`);
         return undefined;
     }
+    const ADHOC_RELEASE_DOC_TITLE = /^adhoc[- ]?release/i;
     const releaseDocs = (((_b = issue.documents) === null || _b === void 0 ? void 0 : _b.nodes) || [])
-        .filter(doc => { var _a; return (_a = doc.title) === null || _a === void 0 ? void 0 : _a.startsWith('Release'); });
+        .filter(doc => doc.title && ADHOC_RELEASE_DOC_TITLE.test(doc.title));
     if (releaseDocs.length === 0) {
-        console.log(`No Release documents found for Linear issue ${issueKey}`);
+        console.log(`No adhoc-release documents found for Linear issue ${issueKey}`);
     }
     const environments = releaseDocs.flatMap(doc => (0, exports.parseMarkdownTableRows)(doc.content));
     return {
