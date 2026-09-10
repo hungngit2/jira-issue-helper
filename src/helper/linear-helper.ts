@@ -68,25 +68,34 @@ export const parseMarkdownTableRows = (markdown: string): EnvironmentData[] => {
     if (!/^\|[-| :]+\|$/.test(lines[1].trim())) return []
 
     const headers = parseTableRow(lines[0]).map(h => camelCase(h))
-    // Real tickets pack multiple values into a single cell separated by
-    // commas, semicolons, or plain whitespace (e.g. "dev uat", or a
-    // whitespace-joined list of upsert paths) - split on all three.
-    const splitCell = (val: string): string[] =>
-      val.split(/[,;\s]+/).map(v => v.trim()).filter(Boolean)
+    // Mirrors jira-helper.ts's ADF parsing: a Jira table cell holds multiple
+    // values as separate paragraphs/hard-breaks, which extractTextFromParagraphs
+    // turns into separate array elements for every column. Linear has no such
+    // structure in plain markdown - a hard line break typed inside a table cell
+    // is instead encoded as the literal entity/tag below - so split on that for
+    // every column the same way, then (matching jira-helper.ts exactly) apply
+    // an additional comma/semicolon split only to the environment column.
+    const splitLines = (val: string): string[] =>
+      val.split(/&#10;|&#13;|<br\s*\/?>/i).map(v => v.trim()).filter(Boolean)
 
     const dataRows = lines.slice(2).map(line => {
       const cells = parseTableRow(line)
       const row: EnvironmentData = {}
       headers.forEach((key, idx) => {
-        row[key] = splitCell((cells[idx] || '').trim())
+        row[key] = splitLines((cells[idx] || '').trim())
       })
       return row
     })
 
     return dataRows.flatMap(row => {
       const envValues = row.environment || []
-      if (envValues.length <= 1) return [row]
-      return envValues.map(env => ({ ...row, environment: [env] }))
+      const splitEnvs = envValues
+        .flatMap(v => v.split(/[,;]/))
+        .map(v => v.trim())
+        .filter(Boolean)
+
+      if (splitEnvs.length <= 1) return [row]
+      return splitEnvs.map(env => ({ ...row, environment: [env] }))
     })
   })
 }
