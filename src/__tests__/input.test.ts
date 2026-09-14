@@ -2,7 +2,7 @@ jest.mock('@actions/core', () => ({ getInput: () => '' }))
 jest.mock('@actions/github', () => ({ context: { payload: {} } }))
 
 const ENV_KEYS = [
-  'JIRA_API_TOKEN', 'JIRA_ISSUE_KEY', 'LINEAR_API_TOKEN', 'LINEAR_ISSUE_KEY', 'ISSUE_TRACKER',
+  'JIRA_API_TOKEN', 'JIRA_ISSUE_KEY', 'ISSUE_KEY', 'LINEAR_API_TOKEN', 'LINEAR_ISSUE_KEY', 'ISSUE_TRACKER',
 ]
 
 const withEnv = (vars: Record<string, string>, fn: () => void) => {
@@ -53,6 +53,30 @@ describe('Input LINEAR_API_TOKEN fallback to JIRA_API_TOKEN', () => {
     withEnv({ JIRA_API_TOKEN: 'jira-token', JIRA_ISSUE_KEY: 'ABC-1', ISSUE_TRACKER: 'Linear' }, () => {
       const { Input } = require('../utils/input')
       expect(Input.LINEAR_API_TOKEN).toBe('jira-token')
+    })
+  })
+})
+
+describe('Input ISSUE_KEY / JIRA_ISSUE_KEY backward compatibility', () => {
+  it('uses JIRA_ISSUE_KEY when ISSUE_KEY is not set (old projects keep working)', () => {
+    withEnv({ JIRA_ISSUE_KEY: 'ABC-123' }, () => {
+      const { Input } = require('../utils/input')
+      expect(Input.JIRA_ISSUE_KEY).toBe('ABC-123')
+    })
+  })
+
+  it('uses ISSUE_KEY when set, ignoring JIRA_ISSUE_KEY', () => {
+    withEnv({ ISSUE_KEY: 'ENG-456', JIRA_ISSUE_KEY: 'ABC-123' }, () => {
+      const { Input } = require('../utils/input')
+      expect(Input.JIRA_ISSUE_KEY).toBe('ENG-456')
+    })
+  })
+
+  it('works with only ISSUE_KEY set (no JIRA_ISSUE_KEY at all)', () => {
+    withEnv({ ISSUE_KEY: 'ENG-456' }, () => {
+      const { Input } = require('../utils/input')
+      expect(Input.JIRA_ISSUE_KEY).toBe('ENG-456')
+      expect(Input.LINEAR_ISSUE_KEY).toBe('ENG-456')
     })
   })
 })

@@ -50584,13 +50584,16 @@ const tryExtractJiraKey = (text, pattern) => {
     const extractedKey = extractJiraKeyFromText(text, pattern);
     return extractedKey || null;
 };
+// ISSUE_KEY is the generic (Jira- or Linear-agnostic) input; JIRA_ISSUE_KEY is
+// kept as a deprecated alias so existing workflows don't need to change.
+const getRawIssueKey = () => getInput('ISSUE_KEY') || getInput('JIRA_ISSUE_KEY');
 const getJiraIssueKey = () => {
     var _a;
     // Get pattern for extraction
     const patternString = getInput('JIRA_ISSUE_KEY_PATTERN', DEFAULT_JIRA_ISSUE_KEY_PATTERN);
     const pattern = new RegExp(patternString, 'i');
     // Check direct input first
-    const jiraIssueKey = getInput('JIRA_ISSUE_KEY');
+    const jiraIssueKey = getRawIssueKey();
     if (jiraIssueKey) {
         const extractedKey = tryExtractJiraKey(jiraIssueKey, pattern);
         if (extractedKey) {
@@ -50641,9 +50644,8 @@ const determineActionsMode = () => {
     if (explicitMode) {
         return explicitMode;
     }
-    // Auto-detect based on JIRA_ISSUE_KEY presence
-    const jiraIssueKey = getInput('JIRA_ISSUE_KEY');
-    return jiraIssueKey ? 'IssueInfo' : 'Transition';
+    // Auto-detect based on ISSUE_KEY/JIRA_ISSUE_KEY presence
+    return getRawIssueKey() ? 'IssueInfo' : 'Transition';
 };
 // Main Input object
 const jiraIssueKey = getJiraIssueKey();

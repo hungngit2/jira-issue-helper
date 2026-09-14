@@ -31,7 +31,7 @@ GitHub Action that fetches issue information and environment data from **Linear*
 | `NewComment` | Post a comment to the issue |
 
 Auto-detection (when `ACTIONS_MODE` is not set):
-- `IssueInfo` if `JIRA_ISSUE_KEY` or `LINEAR_ISSUE_KEY` is provided
+- `IssueInfo` if `ISSUE_KEY` (or `JIRA_ISSUE_KEY`/`LINEAR_ISSUE_KEY`) is provided
 - `Transition` otherwise
 
 ---
@@ -42,6 +42,7 @@ Auto-detection (when `ACTIONS_MODE` is not set):
 
 | Name | Required | Description |
 |------|----------|-------------|
+| `ISSUE_KEY` | No | Ticket key, e.g. `ABC-1234`. Works for both Jira and Linear (used as `LINEAR_ISSUE_KEY` when the latter is not set). Preferred over `JIRA_ISSUE_KEY` in new workflows. |
 | `ISSUE_TRACKER` | No | `linear` or `jira`. Omit for auto-detect. |
 | `ACTIONS_MODE` | No | `IssueInfo`, `Transition`, or `NewComment`. |
 | `OUTPUT_KEY` | No | Output key name. Default: `JIRA_ISSUE_INFO` |
@@ -51,7 +52,7 @@ Auto-detection (when `ACTIONS_MODE` is not set):
 | Name | Required | Description |
 |------|----------|-------------|
 | `LINEAR_API_TOKEN` | Yes (for Linear) | Linear API token |
-| `LINEAR_ISSUE_KEY` | No | Issue identifier, e.g. `ENG-123`. Defaults to `JIRA_ISSUE_KEY` if not set. |
+| `LINEAR_ISSUE_KEY` | No | Issue identifier, e.g. `ENG-123`. Defaults to `ISSUE_KEY`/`JIRA_ISSUE_KEY` if not set. |
 | `LINEAR_COMMENT_BODY` | No | Comment body for `NewComment` mode. Falls back to `JIRA_COMMENT_BODY`. |
 
 ### Jira
@@ -61,7 +62,7 @@ Auto-detection (when `ACTIONS_MODE` is not set):
 | `JIRA_BASE_URL` | Yes (for Jira) | e.g. `https://your-domain.atlassian.net` |
 | `JIRA_USER_EMAIL` | Yes (for Jira) | Jira user email |
 | `JIRA_API_TOKEN` | Yes (for Jira) | Jira API token ([get one here](https://id.atlassian.com/manage-profile/security/api-tokens)) |
-| `JIRA_ISSUE_KEY` | Yes (for Jira) | Issue key, e.g. `ABC-1234`. Also used as `LINEAR_ISSUE_KEY` when the latter is not set. |
+| `JIRA_ISSUE_KEY` | No | Deprecated alias for `ISSUE_KEY`, kept for backward compatibility. Ignored when `ISSUE_KEY` is set. |
 | `JIRA_ISSUE_KEY_PATTERN` | No | Regex to extract issue key from PR title. Default: `([A-Z0-9]+)[\s-]?(\d+)` |
 | `JIRA_ISSUE_TYPE_TRANSITION` | No | Transition map, e.g. `Story:Code Review;Bug:Code Review` |
 | `JIRA_COMMENT_BODY` | No | Comment body for `NewComment` mode |
