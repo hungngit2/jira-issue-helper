@@ -26,7 +26,7 @@ inputs:
     description: 'Comment body to add to the Jira issue'
     required: false
   LINEAR_API_TOKEN:
-    description: 'Linear API token. When set, Linear is tried first before falling back to Jira.'
+    description: 'Linear API token. When set, Linear is tried first before falling back to Jira. If not set and ISSUE_TRACKER is explicitly "linear", JIRA_API_TOKEN is reused as the Linear token (for projects storing a real Linear token under that existing secret to avoid a workflow edit) - never as a silent default otherwise.'
     required: false
   LINEAR_ISSUE_KEY:
     description: 'Linear issue identifier, e.g. ENG-123. Defaults to JIRA_ISSUE_KEY if not set.'

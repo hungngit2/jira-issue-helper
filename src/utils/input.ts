@@ -145,18 +145,29 @@ const determineActionsMode = (): string => {
 
 // Main Input object
 const jiraIssueKey = getJiraIssueKey()
+const jiraApiToken = getInput('JIRA_API_TOKEN')
+const issueTracker = getInput('ISSUE_TRACKER')
+// Some projects store a real Linear token under the existing JIRA_API_TOKEN
+// secret (reusing that slot instead of adding a new one, so no workflow file
+// needs editing). Only reuse it when ISSUE_TRACKER=linear is explicitly set -
+// never as a silent default, since a real Jira token is not a valid Linear
+// one, and every Jira-only project would otherwise make a doomed Linear call
+// on every run.
+const linearApiToken = getInput('LINEAR_API_TOKEN') ||
+  (issueTracker.toLowerCase() === 'linear' ? jiraApiToken : '')
+
 export const Input = {
   ACTIONS_MODE: determineActionsMode(),
   JIRA_BASE_URL: getInput('JIRA_BASE_URL'),
   JIRA_USER_EMAIL: getInput('JIRA_USER_EMAIL'),
-  JIRA_API_TOKEN: getInput('JIRA_API_TOKEN'),
+  JIRA_API_TOKEN: jiraApiToken,
   OUTPUT_KEY: getInput('OUTPUT_KEY', DEFAULT_OUTPUT_KEY),
   JIRA_ISSUE_KEY: jiraIssueKey,
   JIRA_TYPE_TRANSITION: getJiraTypeTransition(),
   JIRA_COMMENT_BODY: getInput('JIRA_COMMENT_BODY'),
-  LINEAR_API_TOKEN: getInput('LINEAR_API_TOKEN'),
+  LINEAR_API_TOKEN: linearApiToken,
   LINEAR_ISSUE_KEY: getInput('LINEAR_ISSUE_KEY') || jiraIssueKey,
   LINEAR_COMMENT_BODY: getInput('LINEAR_COMMENT_BODY'),
   // 'linear' | 'jira' | '' (auto-detect based on token presence)
-  ISSUE_TRACKER: getInput('ISSUE_TRACKER'),
+  ISSUE_TRACKER: issueTracker,
 }
