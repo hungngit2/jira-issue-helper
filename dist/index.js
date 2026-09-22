@@ -50504,20 +50504,21 @@ const tryJira = () => tracker() !== 'linear' || hasJiraConfig();
         return;
     }
     if (input_1.Input.ACTIONS_MODE === 'NewComment') {
-        const comment = input_1.Input.LINEAR_COMMENT_BODY || input_1.Input.JIRA_COMMENT_BODY;
-        if (!comment) {
+        const linearComment = input_1.Input.LINEAR_COMMENT_BODY || input_1.Input.JIRA_COMMENT_BODY;
+        const jiraComment = input_1.Input.JIRA_COMMENT_BODY || input_1.Input.LINEAR_COMMENT_BODY;
+        if (!linearComment && !jiraComment) {
             console.log('No comment provided for NewComment action.');
             return;
         }
         if (tryLinear()) {
-            const done = yield (0, linear_helper_1.addLinearComment)(input_1.Input.LINEAR_ISSUE_KEY, comment);
+            const done = yield (0, linear_helper_1.addLinearComment)(input_1.Input.LINEAR_ISSUE_KEY, linearComment);
             if (done)
                 return;
             console.log('Linear comment failed, falling back to Jira');
         }
         if (tryJira() && hasJiraConfig()) {
             initJiraFetch();
-            yield (0, jira_helper_1.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, comment);
+            yield (0, jira_helper_1.addJiraComment)(input_1.Input.JIRA_ISSUE_KEY, jiraComment);
         }
     }
 }))();

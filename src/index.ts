@@ -63,19 +63,20 @@ const tryJira = () => tracker() !== 'linear' || hasJiraConfig()
   }
 
   if (Input.ACTIONS_MODE === 'NewComment') {
-    const comment = Input.LINEAR_COMMENT_BODY || Input.JIRA_COMMENT_BODY
-    if (!comment) {
+    const linearComment = Input.LINEAR_COMMENT_BODY || Input.JIRA_COMMENT_BODY
+    const jiraComment = Input.JIRA_COMMENT_BODY || Input.LINEAR_COMMENT_BODY
+    if (!linearComment && !jiraComment) {
       console.log('No comment provided for NewComment action.')
       return
     }
     if (tryLinear()) {
-      const done = await addLinearComment(Input.LINEAR_ISSUE_KEY, comment)
+      const done = await addLinearComment(Input.LINEAR_ISSUE_KEY, linearComment)
       if (done) return
       console.log('Linear comment failed, falling back to Jira')
     }
     if (tryJira() && hasJiraConfig()) {
       initJiraFetch()
-      await addJiraComment(Input.JIRA_ISSUE_KEY, comment)
+      await addJiraComment(Input.JIRA_ISSUE_KEY, jiraComment)
     }
   }
 })()
